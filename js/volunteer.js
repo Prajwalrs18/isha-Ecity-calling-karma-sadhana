@@ -153,7 +153,7 @@
     }
     if (st.caller.notStarted) {
       area.innerHTML = '<div class="card done-card"><img src="img/done.jpg" alt=""><div class="inner"><h2>' + dayOneText(st.caller.startDate) + '</h2>' +
-        '<p class="muted">You have ' + st.caller.perDay + ' calls a day for ' + st.caller.daysLeft + ' days. Your contacts will appear here on day one.</p>' +
+        '<p class="muted">You have ' + st.caller.perDay + (st.caller.perDay === 1 ? ' call' : ' calls') + ' a day for ' + st.caller.daysLeft + ' days. Your contacts will appear here on day one.</p>' +
         '<blockquote class="quote">' + esc(quote()) + '</blockquote></div></div>';
       return;
     }

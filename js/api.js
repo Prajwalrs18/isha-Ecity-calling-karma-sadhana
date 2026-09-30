@@ -56,12 +56,23 @@
         }, 150);
       });
     }
-    var body = Object.assign({ action: action }, payload);
-    return fetch(window.CONFIG.API_URL, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body)
-    }).then(function (r) { return r.json(); }).then(function (res) {
-      if (!res.ok) throw new Error(res.error || 'Server error');
-      return res.data;
-    });
+    var body = JSON.stringify(Object.assign({ action: action, reqId: Date.now().toString(36) + Math.random().toString(36).slice(2) }, payload));
+    // Google sometimes answers with an error page or drops the connection: retry a few times (same reqId, so a save is never done twice)
+    function attempt(n) {
+      return fetch(window.CONFIG.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: body })
+        .then(function (r) { return r.text(); })
+        .then(function (t) {
+          var res; try { res = JSON.parse(t); } catch (e) { var er = new Error('bad'); er.retry = true; throw er; }
+          if (!res.ok) throw new Error(res.error || 'Server error');
+          return res.data;
+        })
+        .catch(function (e) {
+          var transient = e.retry || e instanceof TypeError;
+          if (transient && n < 4) return new Promise(function (ok) { setTimeout(ok, 700 * n); }).then(function () { return attempt(n + 1); });
+          if (transient) throw new Error('The connection is slow right now. Please tap again 🙏');
+          throw e;
+        });
+    }
+    return attempt(1);
   };
 })();
