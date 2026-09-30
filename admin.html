@@ -39,6 +39,12 @@
 
   <section class="a-view hidden" id="t-dash">
     <div class="a-kpis" id="kpis"></div>
+    <div class="card"><h3 class="h3">📣 Daily message for the volunteer group</h3>
+      <p class="muted">Post this in the WhatsApp group every morning to thank and motivate the callers.</p>
+      <div class="filters" style="grid-template-columns:1fr 1fr"><button class="btn ghost" id="sumYday">Yesterday</button><button class="btn ghost" id="sumToday">Today so far</button></div>
+      <textarea id="sumText" rows="9" style="margin:10px 0"></textarea>
+      <div class="row2"><button class="btn ghost" id="sumCopy">Copy</button><button class="btn wa" id="sumWa">Share on WhatsApp</button></div>
+    </div>
     <div class="card"><h3 class="h3">People not reached</h3><p class="muted">Everyone we have not spoken to yet: never called, didn't receive, or wrong number.</p><button class="btn primary big" id="dlNotReached">⬇ Download not-reached list (CSV)</button></div>
     <div class="card"><h3 class="h3">Outcome of calls</h3><div class="bars" id="bars"></div></div>
     <div class="card"><h3 class="h3">Callers today</h3><div class="tbl-wrap"><table class="tbl" id="dashCallers"></table></div></div>
