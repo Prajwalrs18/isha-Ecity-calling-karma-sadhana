@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#5A0E18">
+<title>Karma Sadhana Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="adm">
+<div class="bg"><div class="bg-img show" style="background-image:url(img/admin.jpg)"></div><div class="bg-shade"></div></div>
+
+<section class="screen a-login" id="aLogin">
+  <div class="login-card">
+    <div class="namaskaram">🙏</div>
+    <h1 class="a-h1">Karma Sadhana Admin</h1>
+    <p class="sub">Inner Engineering Calling · Karma Sadhana</p>
+    <input id="pw" type="password" placeholder="Admin password" autocomplete="current-password">
+    <button class="btn primary big" id="pwBtn">Log in</button>
+    <p class="err" id="pwErr"></p>
+    <p class="demo-note hidden" id="aDemo">Demo mode · password isha@123</p>
+    <p class="demo-note"><a href="index.html">← Back to calling page</a></p>
+  </div>
+</section>
+
+<main class="a-app hidden" id="aApp">
+  <header class="a-top">
+    <div><div class="small-caps">Karma Sadhana Admin</div><div class="a-title" id="aTitle"></div></div>
+    <div class="a-top-r"><button class="icon-btn" id="refresh" title="Refresh">⟳</button><button class="icon-btn" id="aOut" title="Log out">⏻</button></div>
+  </header>
+  <nav class="a-tabs">
+    <button data-t="callers" class="on">Callers</button><button data-t="dash">Dashboard</button>
+    <button data-t="contacts">Contacts</button><button data-t="upload">Add contacts</button>
+  </nav>
+
+  <section class="a-view hidden" id="t-dash">
+    <div class="a-kpis" id="kpis"></div>
+    <div class="card"><h3 class="h3">People not reached</h3><p class="muted">Everyone we have not spoken to yet: never called, didn't receive, or wrong number.</p><button class="btn primary big" id="dlNotReached">⬇ Download not-reached list (CSV)</button></div>
+    <div class="card"><h3 class="h3">Outcome of calls</h3><div class="bars" id="bars"></div></div>
+    <div class="card"><h3 class="h3">Callers today</h3><div class="tbl-wrap"><table class="tbl" id="dashCallers"></table></div></div>
+    <div class="card"><h3 class="h3">Recent activity</h3><ul class="feed" id="recent"></ul></div>
+  </section>
+
+  <section class="a-view" id="t-callers">
+    <div class="card">
+      <h3 class="h3">Add a caller</h3>
+      <p class="muted" id="poolInfo"></p>
+      <div class="form">
+        <label>Name<input id="cName" placeholder="Volunteer name"></label>
+        <label>Phone number<input id="cPhone" type="tel" inputmode="numeric" placeholder="10-digit mobile"></label>
+        <label>Calls per day<select id="cPer"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>8</option><option>10</option></select></label>
+        <label>Number of days<input id="cDays" type="number" min="0" placeholder="Auto"></label>
+      </div>
+      <p class="muted tiny" id="assignPreview" style="margin:-4px 0 12px"></p>
+      <button class="btn primary big" id="cSave">Add caller & assign contacts</button>
+      <p class="muted tiny" style="margin-top:10px">Contacts are taken automatically from the remaining master sheet (calls per day × days). The caller logs in on the calling page with this phone number. Same number again = update.</p>
+    </div>
+    <div class="card"><h3 class="h3">All callers</h3><div class="tbl-wrap"><table class="tbl" id="callersTbl"></table></div></div>
+  </section>
+
+  <section class="a-view hidden" id="t-contacts">
+    <div class="card">
+      <div class="filters">
+        <input id="q" placeholder="Search name / phone / program">
+        <select id="fStatus"></select>
+      </div>
+      <div class="bulk">
+        <span id="selCount">0 selected</span>
+        <select id="bulkTo"></select>
+        <button class="btn primary" id="bulkAssign">Assign</button>
+        <button class="btn ghost" id="bulkReset" title="Mark as not called and put back in the pool">Call again</button>
+        <button class="btn ghost" id="dlCsv">Download CSV</button>
+      </div>
+      <div class="tbl-wrap"><table class="tbl" id="contactsTbl"></table></div>
+      <div class="pager" id="pager"></div>
+    </div>
+  </section>
+
+  <section class="a-view hidden" id="t-upload">
+    <div class="card">
+      <h3 class="h3">Upload contacts</h3>
+      <p class="muted">CSV or Excel. Columns are detected automatically: <b>Name</b>, <b>Phone</b>, <b>Email</b>, <b>Programs</b>. Duplicates (same phone) are merged — programs are combined, nobody is added twice.</p>
+      <div class="form">
+        <label class="full">File<input id="uFile" type="file" accept=".csv,.xlsx,.xls"></label>
+        <label>Program name for this file (optional)<input id="uProg" placeholder="e.g. Shivanga"></label>
+        <label>Give these contacts to<select id="uFor"></select></label>
+      </div>
+      <div class="form hidden" id="uNew">
+        <label>New caller's name<input id="nName" placeholder="Volunteer name"></label>
+        <label>Phone number<input id="nPhone" type="tel" inputmode="numeric" placeholder="10-digit mobile"></label>
+        <label>Calls per day<select id="nPer"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>8</option><option>10</option></select></label>
+        <label>Number of days<input id="nDays" type="number" min="0" placeholder="Auto"></label>
+      </div>
+      <div id="uPreview" class="muted"></div>
+      <button class="btn primary big" id="uGo" disabled>Upload</button>
+      <p id="uResult" class="ok"></p>
+    </div>
+  </section>
+</main>
+
+<div class="overlay sheet-wrap hidden" id="editWrap">
+  <div class="sheet">
+    <div class="sheet-grip"></div>
+    <h3 id="eTitle"></h3>
+    <div class="form">
+      <label>Calls per day<input id="ePer" type="number" min="1"></label>
+      <label>Days left<input id="eDays" type="number" min="0"></label>
+      <label class="full"><span><input type="checkbox" id="eActive"> Active</span></label>
+    </div>
+    <div class="row2"><button class="btn ghost" id="eCancel">Cancel</button><button class="btn primary" id="eSave">Save</button></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="data/master-contacts.js"></script>
+<script src="js/config.js"></script>
+<script src="js/core.js"></script>
+<script src="js/api.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>
