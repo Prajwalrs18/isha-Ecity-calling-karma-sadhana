@@ -1,5 +1,9 @@
 /* Talks to the Google Apps Script backend, or runs the same logic locally in DEMO mode. */
 (function () {
+  // TEST MODE: open the site with ?test=1 — practice calls stay in this phone only, never touch the Google Sheet
+  window.isTest = /[?&]test(=|&|$)/.test(location.search);
+  var PFX = window.isTest ? 'icst_' : 'ics_';
+  if (window.isTest) window.CONFIG.CAMPAIGN_START_DATE = istDay();
   var LS = {
     get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
     set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
@@ -7,11 +11,11 @@
   var DemoStore = {
     all: function (t) {
       var rows = [];
-      try { rows = JSON.parse(LS.get('ics_' + t) || '[]'); } catch (e) {}
+      try { rows = JSON.parse(LS.get(PFX + t) || '[]'); } catch (e) {}
       return rows.map(function (o, i) { o._i = i; return o; });
     },
     save: function (t, rows) {
-      LS.set('ics_' + t, JSON.stringify(rows.map(function (o) { var c = Object.assign({}, o); delete c._i; return c; })));
+      LS.set(PFX + t, JSON.stringify(rows.map(function (o) { var c = Object.assign({}, o); delete c._i; return c; })));
     },
     update: function (t, o) { var r = this.all(t); r[o._i] = o; this.save(t, r); },
     insert: function (t, o) { var r = this.all(t); r.push(o); this.save(t, r); },
@@ -40,7 +44,18 @@
       createCore(DemoStore).uploadContacts({ rows: window.MASTER_CONTACTS });
   }
 
-  window.isDemo = !window.CONFIG.API_URL;
+  // test mode: the first login creates a practice caller with 8 practice contacts whose number is YOUR number
+  function seedTest(phone) {
+    phone = normPhone(phone);
+    if (phone.length !== 10 || DemoStore.all('Callers').some(function (c) { return normPhone(c.phone) === phone; })) return;
+    createCore(DemoStore).saveCaller({ name: 'Test Volunteer', phone: phone, perDay: 3, days: 3, startDate: istDay(), skipAssign: true });
+    var rows = [];
+    for (var i = 1; i <= 8; i++) rows.push({ id: 'T' + i, name: 'Practice Seeker ' + i, phone: phone, email: '', programs: i % 2 ? 'Shivanga' : 'FMF',
+      reservedFor: phone, assignedTo: '', assignedAt: '', status: '', attempts: 0, lastCalledAt: '', calledBy: '', notes: '' });
+    DemoStore.replaceAll('Contacts', rows);
+  }
+
+  window.isDemo = !window.CONFIG.API_URL || window.isTest;
   // Live mode: wipe any test data left in this browser from demo mode
   if (!window.isDemo) ['ics_Contacts', 'ics_Callers', 'ics_Log', 'ics_admtok', 'ics_admin_token', 'ics_seeded'].forEach(function (k) {
     try { localStorage.removeItem(k); } catch (e) {}
@@ -48,7 +63,7 @@
   window.api = function (action, payload) {
     payload = payload || {};
     if (window.isDemo) {
-      seedDemo();
+      if (window.isTest) { if (payload.phone) seedTest(payload.phone); } else seedDemo();
       return new Promise(function (resolve, reject) {
         setTimeout(function () {
           try { resolve(dispatch(createCore(DemoStore), DemoAuth, action, payload)); }

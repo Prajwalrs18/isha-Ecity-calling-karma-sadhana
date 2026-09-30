@@ -48,6 +48,12 @@
   function initLogin() {
     $('#campTitle').textContent = C.CAMPAIGN_TITLE; $('#sectorName').textContent = C.SECTOR;
     $('#loginQuote').textContent = quote();
+    if (window.isTest) {
+      var tb = document.createElement('div');
+      tb.textContent = '🧪 TEST MODE — practice only, nothing is saved to the sheet. Calls go to your own number.';
+      tb.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:95;background:#1F8A4C;color:#fff;font:600 12px Poppins,sans-serif;padding:6px 10px;text-align:center';
+      document.body.appendChild(tb);
+    }
     FX.ambient(true);
     var saved = LS.get('ics_phone');
     if (saved) { $('#phoneIn').value = saved; }
