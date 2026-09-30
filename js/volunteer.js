@@ -79,8 +79,7 @@
     $('#wName').textContent = st.caller.name;
     $('#wLine').textContent = st.caller.notStarted ? dayOneText(st.caller.startDate) + ' Get ready!'
       : st.over ? 'Thank you for your Karma Sadhana 🙏'
-      : left > 0 ? 'Today, ' + left + ' ' + (left === 1 ? 'soul is' : 'souls are') + ' waiting for your call 🌸'
-      : "Today's calls are done — you are glowing ✨";
+      : 'Thank you for offering your time to make this happen 🙏';
     $('#wQuote').textContent = quote();
     $('#welcome').classList.remove('hidden');
     $('#login').classList.add('hidden'); FX.shower(35); FX.chime();
@@ -107,7 +106,7 @@
     var left = st.today.target - st.today.done;
     $('#progTitle').textContent = cv.notStarted ? dayOneText(cv.startDate)
       : st.over ? 'Karma Sadhana period complete 🙏'
-      : left > 0 ? left + ' more ' + (left === 1 ? 'call' : 'calls') + ' today'
+      : left > 0 ? 'Let’s become a mother to ' + left + (left === 1 ? ' person' : ' people') + ' today 🌸'
       : left === 0 ? "Today's target done! 🌸" : 'Extra mile: +' + (-left) + ' ✨';
     var total = C.CAMPAIGN_START_DATE && C.CAMPAIGN_END_DATE ? daysBetween(C.CAMPAIGN_START_DATE, C.CAMPAIGN_END_DATE) + 1 : 0;
     var dayNo = C.CAMPAIGN_START_DATE ? daysBetween(C.CAMPAIGN_START_DATE, istDay()) + 1 : 0;
