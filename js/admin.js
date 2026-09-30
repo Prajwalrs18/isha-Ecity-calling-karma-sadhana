@@ -52,7 +52,31 @@
     ['dash', 'callers', 'contacts', 'upload'].forEach(function (t) { $('#t-' + t).classList.toggle('hidden', t !== b.dataset.t); });
   };
 
-  function renderAll() { renderDash(); renderCallers(); renderContacts(); updatePreview(); fillCallerSelects(); }
+  /* daily WhatsApp summary */
+  function summaryText(day) {
+    var d = (A.d.daily || {})[day] || { calls: 0, connects: 0, intros: 0, regs: 0, extra: [], regBy: [] };
+    var start = window.CONFIG.CAMPAIGN_START_DATE, n = start ? daysBetween(start, day) + 1 : 0;
+    var nice = new Date(day + 'T00:00:00Z').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+    var lines = ['🌸 *Karma Sadhana – ' + (n > 0 ? 'Day ' + n + ' · ' : '') + nice + '* 🌸', '',
+      'Namaskaram everyone 🙏', '',
+      '📞 ' + d.calls + ' calls made', '🗣️ ' + d.connects + ' conversations', '🌼 ' + d.intros + ' will join the intro', '🎉 ' + d.regs + ' registrations'];
+    if (d.regBy.length) lines.push('', '👏 Registrations by ' + d.regBy.join(', ') + ' – Jai!');
+    if (d.extra.length) lines.push('✨ Heartfelt thanks to ' + d.extra.join(', ') + ' for going the extra mile');
+    var c = A.d.counts, reached = A.d.contacts.filter(function (x) { return x.status; }).length;
+    lines.push('', 'Together we have now reached out to ' + reached + ' of ' + c.total + ' people 🌸', 'Thank you for offering your time. Let’s keep going today 🙏');
+    return lines.join('\n');
+  }
+  function showSummary(day) { A.sumDay = day; $('#sumText').value = summaryText(day); }
+  $('#sumYday').onclick = function () { showSummary(addDays(istDay(), -1)); };
+  $('#sumToday').onclick = function () { showSummary(istDay()); };
+  $('#sumCopy').onclick = function () {
+    var t = $('#sumText'); t.select();
+    (navigator.clipboard ? navigator.clipboard.writeText(t.value) : Promise.reject()).then(function () { toast('Copied 🙏 Paste it in the group'); })
+      .catch(function () { try { document.execCommand('copy'); toast('Copied 🙏'); } catch (e) { toast('Select the text and copy it'); } });
+  };
+  $('#sumWa').onclick = function () { window.open('https://wa.me/?text=' + encodeURIComponent($('#sumText').value), '_blank'); };
+
+  function renderAll() { if (!A.sumDay) showSummary(addDays(istDay(), -1)); renderDash(); renderCallers(); renderContacts(); updatePreview(); fillCallerSelects(); }
   function callerName(p) { var c = A.d.callers.filter(function (x) { return x.phone === p; })[0]; return c ? c.name : p; }
 
   /* dashboard */

@@ -143,6 +143,7 @@ function createCore(store) {
       caller: cv, today: { done: done, dials: todayMine.length, target: cv.perDay },
       inHand: inHand.map(contactView), over: over, poolEmpty: poolEmpty,
       stats: { total: mine.length, regs: mine.filter(function (l) { return l.status === 'registered'; }).length,
+               reached: Object.keys(mine.reduce(function (m, l) { if (l.status !== 'no_answer' && l.status !== 'wrong_number') m[l.contactId] = 1; return m; }, {})).length,
                streak: streakOf(mine, cv.perDay) },
       history: history, feed: td.feed, board: td.board, team: td.team,
       followUps: contacts.filter(function (x) { return x.status === 'follow_up' && normPhone(x.calledBy) === phone; }).map(contactView)
@@ -218,8 +219,25 @@ function createCore(store) {
                  reservedFor: normPhone(x.reservedFor), assignedTo: normPhone(x.assignedTo), status: x.status,
                  attempts: Number(x.attempts) || 0, lastCalledAt: x.lastCalledAt, calledBy: normPhone(x.calledBy), notes: x.notes };
       }),
-      log: log.slice(-150).reverse()
+      log: log.slice(-150).reverse(),
+      daily: dailySummary(log, callers)
     };
+  }
+
+  function dailySummary(log, callers) {
+    var names = {}, out = {};
+    callers.forEach(function (c) { names[normPhone(c.phone)] = firstName(c.name); });
+    log.forEach(function (l) {
+      var d = istDay(l.ts), o = out[d] || (out[d] = { calls: 0, connects: 0, intros: 0, regs: 0, extra: {}, regBy: {} });
+      var who = names[normPhone(l.callerPhone)] || firstName(l.callerName);
+      o.calls++;
+      if (l.status !== 'no_answer' && l.status !== 'wrong_number') o.connects++;
+      if (l.status === 'intro') o.intros++;
+      if (l.status === 'registered') { o.regs++; o.regBy[who] = 1; }
+      if (l.milestone === 'extra') o.extra[who] = 1;
+    });
+    Object.keys(out).forEach(function (d) { out[d].extra = Object.keys(out[d].extra); out[d].regBy = Object.keys(out[d].regBy); });
+    return out;
   }
 
   function saveCaller(p) {

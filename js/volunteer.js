@@ -113,7 +113,8 @@
     $('#progSub').textContent = (!cv.notStarted && dayNo > 0 && total ? 'Day ' + dayNo + ' of ' + total : '') +
       (st.today.dials > st.today.done ? (dayNo > 0 ? ' · ' : '') + st.today.dials + ' dials today' : '');
     $('#daysLeft').textContent = st.caller.daysLeft + (st.caller.daysLeft === 1 ? ' day left' : ' days left');
-    $('#myTotal').textContent = st.stats.total + ' calls · ' + st.stats.regs + ' reg.';
+    var r = st.stats.reached || 0;
+    $('#myTotal').textContent = r ? 'You’ve offered this possibility to ' + r + (r === 1 ? ' person' : ' people') + ' 🙏' : 'Your first offering awaits 🙏';
     renderContact(); renderTicker(); renderFollow();
   }
 
@@ -188,11 +189,14 @@
   function save(id, status, notes, fromList) {
     if (S.busy || !status) return;
     S.busy = true;
+    var prevTotal = S.st.stats.total, prevTeam = S.st.team ? S.st.team.dials : 0;
     var card = fromList ? document.querySelector('#fuList li[data-id="' + id + '"]') : $('.contact'); if (card) card.classList.add('loading');
     api('submit', { phone: S.phone, contactId: id, status: status, notes: (notes || '').trim() }).then(function (st) {
       S.st = st;
       if (!fromList) { S.sel = null; S.note = ''; }
-      render(); celebrateOwn(st.saved, st.milestone);
+      render(); celebrateOwn(st.saved, st.milestone, prevTotal);
+      var sm = SECTOR_MILESTONES.filter(function (m) { return prevTeam < m && st.team.dials >= m; }).pop();
+      if (sm) setTimeout(function () { celebrate('🎊', 'The calling squad crossed ' + sm + ' calls!', 'And your call took us there. Thank you, everyone 🙏', true); }, 2500);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }).catch(function (e) { toast('⚠️ ' + e.message, 4000); if (card) card.classList.remove('loading'); })
       .then(function () { S.busy = false; });
@@ -206,8 +210,13 @@
     FX.buzz(big ? [80, 50, 80, 50, 160] : [50]);
     $('#celClose').onclick = function () { $('#celebrate').classList.add('hidden'); };
   }
-  function celebrateOwn(status, milestone) {
-    var name = titleFirst(S.st.caller.name);
+  var MILESTONES = [10, 25, 50, 75, 100];
+  var SECTOR_MILESTONES = [100, 250, 500, 750, 1000, 1500, 2000];
+  function celebrateOwn(status, milestone, prevTotal) {
+    var name = titleFirst(S.st.caller.name), st = S.st.stats;
+    if (status === 'registered' && st.regs === 1) return celebrate('🏆', 'Your FIRST registration, ' + name + '!', 'A moment to remember. Someone will experience Inner Engineering because you picked up the phone 🙏', true);
+    var hit = MILESTONES.filter(function (m) { return prevTotal < m && st.total >= m; })[0];
+    if (hit) return celebrate('🌟', hit + ' calls, ' + name + '!', 'You have made ' + hit + ' calls in this Karma Sadhana. Every one of them was an offering 🙏', hit >= 50);
     if (status === 'registered') return celebrate('👏', 'A Registration! Jai, ' + name + '!', 'Someone is going to experience Inner Engineering because of your call. Everyone is clapping for you.', true);
     if (milestone === 'target') return celebrate('🙏', "Today's target complete!", 'Beautiful Karma Sadhana, ' + name + ' 🙏', false);
     if (status === 'intro') { FX.shower(45); FX.chime(); return toast('🌼 Wonderful! They will join the intro'); }
@@ -266,8 +275,11 @@
   function poll() {
     if (document.hidden || !S.st) return;
     api('feed', {}).then(function (d) {
+      var before = S.st.team ? S.st.team.dials : 0;
       S.st.feed = d.feed; S.st.team = d.team;
       renderTicker();
+      var sm = SECTOR_MILESTONES.filter(function (m) { return before < m && d.team.dials >= m; }).pop();
+      if (sm && before > 0) return celebrate('🎊', 'The calling squad crossed ' + sm + ' calls!', 'Together we have offered this possibility ' + sm + ' times. Thank you, everyone 🙏', true);
       var fresh = d.feed.filter(function (f) { return f.ts > S.lastSeen && f.phone !== S.phone; }).reverse();
       if (d.feed[0] && d.feed[0].ts > S.lastSeen) { S.lastSeen = d.feed[0].ts; LS.set('ics_lastSeen_' + S.phone, S.lastSeen); }
       var reg = fresh.filter(function (f) { return f.type === 'registered'; })[0];
