@@ -1,0 +1,273 @@
+(function () {
+  var $ = function (s) { return document.querySelector(s); };
+  var LS = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
+  };
+  var A = { token: LS.get('ics_admin_token'), d: null, page: 0, sel: {}, upRows: null, editing: null };
+  var PAGE = 50;
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function toast(m, ms) { var t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(function () { t.classList.remove('show'); }, ms || 3000); }
+  function fmt(iso) { if (!iso) return ''; var d = new Date(iso); return d.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }); }
+  function call(action, p) {
+    return api(action, Object.assign({ token: A.token }, p || {})).catch(function (e) {
+      if (e.message === 'AUTH') { logout(); throw new Error('Session expired, please log in again'); }
+      throw e;
+    });
+  }
+
+  /* login */
+  if (window.isDemo) $('#aDemo').classList.remove('hidden');
+  $('#pwBtn').onclick = function () {
+    $('#pwErr').textContent = '';
+    api('adminLogin', { password: $('#pw').value }).then(function (r) {
+      A.token = r.token; LS.set('ics_admin_token', r.token); start();
+    }).catch(function (e) { $('#pwErr').textContent = e.message; });
+  };
+  $('#pw').onkeydown = function (e) { if (e.key === 'Enter') $('#pwBtn').click(); };
+  function logout() { LS.set('ics_admin_token', null); A.token = null; $('#aApp').classList.add('hidden'); $('#aLogin').classList.remove('hidden'); }
+  $('#aOut').onclick = logout;
+
+  function start() {
+    $('#aLogin').classList.add('hidden'); $('#aApp').classList.remove('hidden');
+    $('#aTitle').textContent = window.CONFIG.CAMPAIGN_TITLE + (window.isDemo ? ' · DEMO' : '');
+    load();
+  }
+  function load() {
+    return call('adminData').then(function (d) {
+      // First login on an empty Google Sheet: load the master sheet automatically if data/master-contacts.js is available
+      if (!d.counts.total && window.MASTER_CONTACTS && !A.autoLoaded) {
+        A.autoLoaded = true; toast('Loading the master sheet (' + window.MASTER_CONTACTS.length + ' contacts)…', 6000);
+        return call('uploadContacts', { rows: window.MASTER_CONTACTS }).then(load);
+      }
+      A.d = d; renderAll();
+    }).catch(function (e) { toast('⚠️ ' + e.message); });
+  }
+  $('#refresh').onclick = function () { load().then(function () { toast('Refreshed'); }); };
+  setInterval(function () { if (A.token && !document.hidden && !$('#aApp').classList.contains('hidden')) load(); }, 60000);
+
+  document.querySelector('.a-tabs').onclick = function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    [].forEach.call(document.querySelectorAll('.a-tabs button'), function (x) { x.classList.toggle('on', x === b); });
+    ['dash', 'callers', 'contacts', 'upload'].forEach(function (t) { $('#t-' + t).classList.toggle('hidden', t !== b.dataset.t); });
+  };
+
+  function renderAll() { renderDash(); renderCallers(); renderContacts(); updatePreview(); fillCallerSelects(); }
+  function callerName(p) { var c = A.d.callers.filter(function (x) { return x.phone === p; })[0]; return c ? c.name : p; }
+
+  /* dashboard */
+  function renderDash() {
+    var d = A.d, c = d.counts;
+    var todayDials = d.callers.reduce(function (s, v) { return s + v.todayDials; }, 0);
+    var remaining = c.fresh + d.contacts.filter(function (x) { return x.assignedTo && !x.status; }).length;
+    var eta = d.dailyCapacity ? Math.ceil(remaining / d.dailyCapacity) : '—';
+    $('#kpis').innerHTML = [
+      [c.total, 'contacts in list'], [c.total - remaining, 'called at least once'], [remaining, 'not called yet'],
+      [todayDials, 'dials today'], [c.intro, 'will join intro'], [c.registered + ' 🎉', 'registered', 'gold'],
+      [d.dailyCapacity + '/day', 'team capacity'], [eta + (eta === '—' ? '' : ' days'), 'to finish at this pace']
+    ].map(function (k) { return '<div class="kpi ' + (k[2] || '') + '"><b>' + k[0] + '</b><span>' + k[1] + '</span></div>'; }).join('');
+    var max = Math.max(1, Math.max.apply(null, Object.keys(STATUS).map(function (k) { return c[k] || 0; })));
+    $('#bars').innerHTML = Object.keys(STATUS).map(function (k) {
+      return '<div class="bar"><span>' + STATUS[k].emoji + ' ' + STATUS[k].label + '</span><div class="track"><div class="fill" style="width:' + (100 * (c[k] || 0) / max) + '%"></div></div><span class="n">' + (c[k] || 0) + '</span></div>';
+    }).join('') + '<p class="muted tiny" style="margin:8px 0 0">' + c.unreachable + ' contacts did not pick up after 3 tries.</p>';
+    var rows = d.callers.slice().sort(function (a, b) { return (b.active - a.active) || (a.todayDone / a.perDay) - (b.todayDone / b.perDay); });
+    $('#dashCallers').innerHTML = '<tr><th>Caller</th><th>Today</th><th class="num">Dials</th><th class="num">Total</th><th class="num">Intro</th><th class="num">Reg</th><th class="num">Days left</th></tr>' +
+      (rows.length ? rows.map(function (v) {
+        var pct = Math.min(100, 100 * v.todayDone / v.perDay);
+        return '<tr class="' + (v.active ? '' : 'off') + '"><td><b>' + esc(v.name) + '</b><br><span class="muted">' + v.phone + '</span></td>' +
+          '<td>' + v.todayDone + '/' + v.perDay + '<span class="bar-mini"><i style="width:' + pct + '%"></i></span></td><td class="num">' + v.todayDials + '</td><td class="num">' + v.dials + '</td>' +
+          '<td class="num">' + v.intros + '</td><td class="num">' + v.regs + '</td><td class="num">' + v.daysLeft + '</td></tr>';
+      }).join('') : '<tr><td colspan="7" class="empty">No callers yet — add them in the Callers tab</td></tr>');
+    $('#recent').innerHTML = d.log.slice(0, 40).map(function (l) {
+      var s = STATUS[l.status] || { emoji: '', label: l.status };
+      return '<li><span class="fi">' + s.emoji + '</span><div><b>' + esc(callerName(normPhone(l.callerPhone)) || l.callerName) + '</b> → ' + esc(l.contactName) + ': ' + esc(s.label) +
+        (l.milestone === 'extra' ? ' ✨ extra' : '') + (l.notes ? ' <span class="muted">“' + esc(l.notes) + '”</span>' : '') + '<time>' + fmt(l.ts) + '</time></div></li>';
+    }).join('') || '<li class="empty">No calls yet</li>';
+  }
+
+  /* callers */
+  function renderCallers() {
+    var rows = A.d.callers;
+    $('#callersTbl').innerHTML = '<tr><th>Name</th><th>Phone</th><th class="num">Per day</th><th class="num">Days left</th><th>Ends</th><th class="num">Calling now</th><th class="num">Assigned (left to call)</th><th></th></tr>' +
+      (rows.length ? rows.map(function (v) {
+        return '<tr class="' + (v.active ? '' : 'off') + '"><td><b>' + esc(v.name) + '</b>' + (v.active ? '' : ' (inactive)') + '</td><td>' + v.phone + '</td><td class="num">' + v.perDay + '</td><td class="num">' + v.daysLeft + '</td><td>' + esc(v.endDate) + '</td>' +
+          '<td class="num">' + v.inHand + '</td><td class="num">' + v.reserved + '</td><td><button class="mini" data-edit="' + v.phone + '">Edit</button></td></tr>';
+      }).join('') : '<tr><td colspan="8" class="empty">No callers yet</td></tr>');
+  }
+  $('#callersTbl').onclick = function (e) {
+    var b = e.target.closest('[data-edit]'); if (!b) return;
+    var v = A.d.callers.filter(function (x) { return x.phone === b.dataset.edit; })[0];
+    A.editing = v; $('#eTitle').textContent = v.name + ' · ' + v.phone;
+    $('#ePer').value = v.perDay; $('#eDays').value = v.daysLeft; $('#eActive').checked = v.active;
+    $('#editWrap').classList.remove('hidden');
+  };
+  $('#eCancel').onclick = function () { $('#editWrap').classList.add('hidden'); };
+  $('#eSave').onclick = function () {
+    var v = A.editing;
+    call('saveCaller', { phone: v.phone, name: v.name, perDay: $('#ePer').value, days: $('#eDays').value, active: $('#eActive').checked, startDate: v.startDate || window.CONFIG.CAMPAIGN_START_DATE })
+      .then(function (r) { $('#editWrap').classList.add('hidden'); toast('Saved 🙏 ' + r.reserved + ' contacts assigned'); return load(); }).catch(function (e) { toast('⚠️ ' + e.message); });
+  };
+  function startDay() { var s = window.CONFIG.CAMPAIGN_START_DATE, t = istDay(); return s > t ? s : t; }
+  function autoDays() { return Math.max(0, daysBetween(startDay(), window.CONFIG.CAMPAIGN_END_DATE) + 1); }
+  function niceDate(d) { return new Date(d + 'T00:00:00Z').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' }); }
+  function updatePreview() {
+    if (!A.d) return;
+    var days = $('#cDays').value === '' ? autoDays() : Number($('#cDays').value);
+    $('#cDays').placeholder = 'Auto: ' + autoDays() + (autoDays() === 1 ? ' day (' : ' days (') + niceDate(startDay()) + ' – ' + niceDate(window.CONFIG.CAMPAIGN_END_DATE) + ')';
+    var n = Number($('#cPer').value) * days;
+    $('#assignPreview').textContent = '→ ' + $('#cPer').value + ' calls × ' + days + ' days = ' + n + ' contacts will be assigned from the master sheet' +
+      (n > A.d.counts.unassigned ? ' (only ' + A.d.counts.unassigned + ' left, the rest come from people who did not pick up)' : '');
+    $('#poolInfo').innerHTML = '<b>' + A.d.counts.unassigned + '</b> of ' + A.d.counts.total + ' master-sheet contacts are not yet assigned to any caller.';
+  }
+  $('#cPer').onchange = updatePreview; $('#cDays').oninput = updatePreview;
+  $('#cSave').onclick = function () {
+    var b = $('#cSave'), phone = normPhone($('#cPhone').value);
+    var days = $('#cDays').value === '' ? autoDays() : $('#cDays').value;
+    b.disabled = true;
+    call('saveCaller', { name: $('#cName').value, phone: phone, perDay: $('#cPer').value, days: days, startDate: window.CONFIG.CAMPAIGN_START_DATE })
+      .then(function (r) {
+        toast((r.created ? 'Caller added 🌸 ' : 'Caller updated 🙏 ') + r.reserved + ' contacts assigned', 4000);
+        ['#cName', '#cPhone', '#cDays'].forEach(function (s) { $(s).value = ''; });
+        return load();
+      }).catch(function (e) { toast('⚠️ ' + e.message); }).then(function () { b.disabled = false; });
+  };
+
+  function fillCallerSelects() {
+    var opts = A.d.callers.filter(function (v) { return v.active; }).map(function (v) { return '<option value="' + v.phone + '">' + esc(v.name) + '</option>'; }).join('');
+    $('#bulkTo').innerHTML = '<option value="">— anyone (pool) —</option>' + opts;
+    var keep = $('#uFor').value;
+    $('#uFor').innerHTML = '<option value="">— everyone (common pool) —</option><option value="__new">➕ A new caller…</option>' + opts;
+    if (keep) $('#uFor').value = keep;
+    $('#nDays').placeholder = $('#cDays').placeholder;
+    if (!$('#fStatus').options.length) {
+      $('#fStatus').innerHTML = '<option value="all">All statuses</option><option value="fresh">Not called yet</option><option value="inhand">With a caller now</option><option value="notreached">Not reached (never spoke)</option><option value="unreach">Unreachable (3 tries)</option>' +
+        Object.keys(STATUS).map(function (k) { return '<option value="' + k + '">' + STATUS[k].emoji + ' ' + STATUS[k].label + '</option>'; }).join('');
+    }
+  }
+
+  /* contacts */
+  function filtered() {
+    var q = $('#q').value.trim().toLowerCase(), f = $('#fStatus').value || 'all';
+    return A.d.contacts.filter(function (x) {
+      if (f === 'fresh' && x.status) return false;
+      if (f === 'inhand' && !x.assignedTo) return false;
+      if (f === 'unreach' && !(x.status === 'no_answer' && x.attempts >= 3)) return false;
+      if (f === 'notreached' && !notReached(x)) return false;
+      if (STATUS[f] && x.status !== f) return false;
+      if (q && (x.name + ' ' + x.phone + ' ' + x.programs + ' ' + x.email).toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    });
+  }
+  function renderContacts() {
+    var list = filtered(), pages = Math.max(1, Math.ceil(list.length / PAGE));
+    if (A.page >= pages) A.page = pages - 1;
+    var rows = list.slice(A.page * PAGE, A.page * PAGE + PAGE);
+    $('#contactsTbl').innerHTML = '<tr><th><input type="checkbox" id="selAll"></th><th>Name</th><th>Phone</th><th>Programs</th><th>Status</th><th>Caller</th><th>Notes</th></tr>' +
+      rows.map(function (x) {
+        var s = STATUS[x.status];
+        var who = x.assignedTo ? '📞 ' + callerName(x.assignedTo) : x.calledBy ? callerName(x.calledBy) : x.reservedFor ? '📌 ' + callerName(x.reservedFor) : '<span class="muted">pool</span>';
+        return '<tr><td><input type="checkbox" data-id="' + esc(x.id) + '" ' + (A.sel[x.id] ? 'checked' : '') + '></td><td><b>' + esc(x.name) + '</b><br><span class="muted">' + esc(x.email) + '</span></td><td>' + x.phone + '</td><td>' + esc(x.programs) + '</td>' +
+          '<td>' + (s ? '<span class="spill ' + x.status + '">' + s.emoji + ' ' + s.label + '</span>' + (x.attempts > 1 ? ' ×' + x.attempts : '') : '<span class="muted">not called</span>') + (x.lastCalledAt ? '<br><span class="muted">' + fmt(x.lastCalledAt) + '</span>' : '') + '</td>' +
+          '<td>' + who + '</td><td>' + esc(x.notes) + '</td></tr>';
+      }).join('');
+    $('#pager').innerHTML = '<button id="pPrev">‹</button><span>' + (A.page + 1) + ' / ' + pages + ' · ' + list.length + ' contacts</span><button id="pNext">›</button>';
+    $('#pPrev').onclick = function () { if (A.page > 0) { A.page--; renderContacts(); } };
+    $('#pNext').onclick = function () { if (A.page < pages - 1) { A.page++; renderContacts(); } };
+    $('#selAll').onchange = function (e) { rows.forEach(function (x) { if (e.target.checked) A.sel[x.id] = 1; else delete A.sel[x.id]; }); renderContacts(); };
+    $('#selCount').textContent = Object.keys(A.sel).length + ' selected';
+  }
+  $('#contactsTbl').onchange = function (e) {
+    var id = e.target.dataset && e.target.dataset.id; if (!id) return;
+    if (e.target.checked) A.sel[id] = 1; else delete A.sel[id];
+    $('#selCount').textContent = Object.keys(A.sel).length + ' selected';
+  };
+  $('#q').oninput = function () { A.page = 0; renderContacts(); };
+  $('#fStatus').onchange = function () { A.page = 0; renderContacts(); };
+  function bulk(reset) {
+    var ids = Object.keys(A.sel); if (!ids.length) return toast('Select contacts first');
+    call('assignContacts', { ids: ids, phone: $('#bulkTo').value, reset: reset }).then(function (r) {
+      A.sel = {}; toast(r.updated + ' contacts ' + (reset ? 'put back to call again' : 'assigned')); return load();
+    }).catch(function (e) { toast('⚠️ ' + e.message); });
+  }
+  $('#bulkAssign').onclick = function () { bulk(false); };
+  $('#bulkReset').onclick = function () { bulk(true); };
+  function notReached(x) { return !x.status || x.status === 'no_answer' || x.status === 'wrong_number'; }
+  function downloadCsv(list, file) {
+    var cols = ['name', 'phone', 'email', 'programs', 'status', 'attempts', 'lastCalledAt', 'calledBy', 'notes'];
+    var head = ['Name', 'Phone', 'Email', 'Programs', 'Status', 'Tries', 'Last called', 'Called by', 'Notes'];
+    var lines = [head.join(',')].concat(list.map(function (x) {
+      return cols.map(function (c) {
+        var v = x[c];
+        if (c === 'status') v = STATUS[v] ? STATUS[v].label : 'Never called';
+        if (c === 'calledBy') v = v ? callerName(v) : '';
+        if (c === 'lastCalledAt') v = fmt(v);
+        return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+      }).join(',');
+    }));
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv' }));
+    a.download = file + '-' + istDay() + '.csv'; a.click();
+  }
+  $('#dlCsv').onclick = function () { downloadCsv(filtered(), 'contacts'); };
+  $('#dlNotReached').onclick = function () {
+    var list = A.d.contacts.filter(notReached);
+    downloadCsv(list, 'not-reached'); toast(list.length + ' people not reached — downloaded');
+  };
+
+  /* upload */
+  function pick(headers, tests) {
+    for (var t = 0; t < tests.length; t++) for (var i = 0; i < headers.length; i++) if (tests[t].test(headers[i])) return headers[i];
+    return null;
+  }
+  function readFile(file) {
+    return file.arrayBuffer().then(function (buf) {
+      if (!window.XLSX) throw new Error('Excel reader did not load — check your internet connection');
+      var wb = XLSX.read(buf, { type: 'array' });
+      var raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '', raw: false });
+      if (!raw.length) throw new Error('The file is empty');
+      var h = Object.keys(raw[0]).map(function (k) { return k; }), low = function (re) { return { test: function (k) { return re.test(k.toLowerCase().trim()); } }; };
+      var cn = pick(h, [low(/^name$/), low(/full ?name/), low(/name/)]);
+      var cp = pick(h, [low(/^phone( number)?$/), low(/mobile/), low(/phone/), low(/whatsapp/), low(/contact/)]);
+      var ce = pick(h, [low(/e-?mail/)]);
+      var cg = pick(h, [low(/^programs?$/), low(/program/)]);
+      if (!cn || !cp) throw new Error('Could not find Name and Phone columns. Found: ' + h.join(', '));
+      var extra = ($('#uProg') && $('#uProg').value.trim()) || '';
+      return raw.map(function (r) {
+        var progs = cg === 'Program Tags' ? '' : String(r[cg] || '');
+        if (extra) progs = progs ? progs + ', ' + extra : extra;
+        return { name: r[cn], phone: r[cp], email: ce ? r[ce] : '', programs: progs };
+      });
+    });
+  }
+  $('#uFile').onchange = function () {
+    var f = $('#uFile').files[0]; A.upRows = null; $('#uGo').disabled = true; $('#uResult').textContent = '';
+    if (!f) return;
+    $('#uPreview').textContent = 'Reading…';
+    readFile(f).then(function (rows) {
+      A.upRows = rows; $('#uGo').disabled = false;
+      $('#uPreview').innerHTML = '<p><b>' + rows.length + '</b> rows found. First: ' + esc(rows[0].name) + ' · ' + esc(rows[0].phone) + ' · ' + esc(rows[0].programs) + '</p>';
+    }).catch(function (e) { $('#uPreview').textContent = '⚠️ ' + e.message; });
+  };
+  $('#uProg').oninput = function () { if ($('#uFile').files[0]) $('#uFile').onchange(); };
+  $('#uFor').onchange = function () { $('#uNew').classList.toggle('hidden', $('#uFor').value !== '__new'); };
+  $('#uGo').onclick = function () {
+    if (!A.upRows) return;
+    var b = $('#uGo'), to = $('#uFor').value, first = Promise.resolve();
+    var toName = to === '__new' ? $('#nName').value : to ? callerName(to) : '';
+    if (to === '__new') {
+      to = normPhone($('#nPhone').value);
+      first = call('saveCaller', { name: $('#nName').value, phone: to, perDay: $('#nPer').value,
+        days: $('#nDays').value === '' ? autoDays() : $('#nDays').value, startDate: window.CONFIG.CAMPAIGN_START_DATE, skipAssign: true });
+    }
+    b.disabled = true; b.textContent = 'Uploading…';
+    first.then(function () { return call('uploadContacts', { rows: A.upRows, reservedFor: to }); }).then(function (r) {
+      $('#uResult').textContent = '✅ ' + r.added + ' new contacts added, ' + r.merged + ' duplicates merged, ' + r.skipped + ' skipped. Total now ' + r.total + '.' +
+        (toName ? ' They are given to ' + toName + '.' : '');
+      if ($('#uFor').value === '__new') toast('Caller ' + $('#nName').value + ' added 🌸', 4000);
+      ['#uFile', '#nName', '#nPhone', '#nDays'].forEach(function (s) { $(s).value = ''; });
+      $('#uFor').value = to; $('#uNew').classList.add('hidden'); A.upRows = null; return load();
+    }).catch(function (e) { toast('⚠️ ' + e.message, 5000); }).then(function () { b.textContent = 'Upload'; b.disabled = !A.upRows; });
+  };
+
+  if (A.token) start();
+})();
