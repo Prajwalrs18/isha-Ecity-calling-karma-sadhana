@@ -348,7 +348,7 @@ function dispatch(core, auth, action, p) {
   var open = { state: 1, login: 1, submit: 1, feed: 1 };
   if (action === 'adminLogin') {
     if (!auth.check(p.password)) throw new Error('Wrong password');
-    return { token: auth.issue() };
+    return { token: auth.issue(), data: core.adminData() };   // data too, so the admin page opens in one trip
   }
   if (open[action]) return core[action](p);
   if (!core[action]) throw new Error('Unknown action ' + action);

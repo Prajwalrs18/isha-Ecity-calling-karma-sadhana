@@ -21,20 +21,20 @@
   $('#pwBtn').onclick = function () {
     $('#pwErr').textContent = '';
     api('adminLogin', { password: $('#pw').value }).then(function (r) {
-      A.token = r.token; LS.set('ics_admin_token', r.token); start();
+      A.token = r.token; LS.set('ics_admin_token', r.token); start(r.data);
     }).catch(function (e) { $('#pwErr').textContent = e.message; });
   };
   $('#pw').onkeydown = function (e) { if (e.key === 'Enter') $('#pwBtn').click(); };
   function logout() { LS.set('ics_admin_token', null); A.token = null; $('#aApp').classList.add('hidden'); $('#aLogin').classList.remove('hidden'); }
   $('#aOut').onclick = logout;
 
-  function start() {
+  function start(first) {
     $('#aLogin').classList.add('hidden'); $('#aApp').classList.remove('hidden');
     $('#aTitle').textContent = window.CONFIG.CAMPAIGN_TITLE + (window.isDemo ? ' · DEMO' : '');
-    load();
+    load(first);
   }
-  function load() {
-    return call('adminData').then(function (d) {
+  function load(first) {   // `first` = data that came with the login, saves a second trip to Google
+    return (first ? Promise.resolve(first) : call('adminData')).then(function (d) {
       // First login on an empty Google Sheet: load the master sheet automatically if data/master-contacts.js is available
       if (!d.counts.total && window.MASTER_CONTACTS && !A.autoLoaded) {
         A.autoLoaded = true; toast('Loading the master sheet (' + window.MASTER_CONTACTS.length + ' contacts)…', 6000);
@@ -122,13 +122,13 @@
     var b = e.target.closest('[data-edit]'); if (!b) return;
     var v = A.d.callers.filter(function (x) { return x.phone === b.dataset.edit; })[0];
     A.editing = v; $('#eTitle').textContent = v.name + ' · ' + v.phone;
-    $('#ePer').value = v.perDay; $('#eDays').value = v.daysLeft; $('#eActive').checked = v.active;
+    $('#eName').value = v.name; $('#ePer').value = v.perDay; $('#eDays').value = v.daysLeft; $('#eActive').checked = v.active;
     $('#editWrap').classList.remove('hidden');
   };
   $('#eCancel').onclick = function () { $('#editWrap').classList.add('hidden'); };
   $('#eSave').onclick = function () {
     var v = A.editing;
-    call('saveCaller', { phone: v.phone, name: v.name, perDay: $('#ePer').value, days: $('#eDays').value, active: $('#eActive').checked, startDate: v.startDate || window.CONFIG.CAMPAIGN_START_DATE })
+    call('saveCaller', { phone: v.phone, name: $('#eName').value, perDay: $('#ePer').value, days: $('#eDays').value, active: $('#eActive').checked, startDate: v.startDate || window.CONFIG.CAMPAIGN_START_DATE })
       .then(function (r) { $('#editWrap').classList.add('hidden'); toast('Saved 🙏 ' + r.reserved + ' contacts assigned'); return load(); }).catch(function (e) { toast('⚠️ ' + e.message); });
   };
   function startDay() { var s = window.CONFIG.CAMPAIGN_START_DATE, t = istDay(); return s > t ? s : t; }
