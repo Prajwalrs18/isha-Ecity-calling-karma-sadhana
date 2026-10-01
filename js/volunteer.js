@@ -244,7 +244,7 @@
     var f = S.st.followUps || [];
     $('#fuCount').textContent = f.length ? ' (' + f.length + ')' : '';
     $('#fuList').innerHTML = f.length ? f.map(function (x) {
-      return '<li data-id="' + esc(x.id) + '"><div class="hrow"><div><div class="hn">' + esc(x.name) + '</div>' +
+      return '<li data-id="' + esc(x.id) + '"><div class="hrow"><div><div class="hn">' + esc(x.name) + (x.status === 'intro' ? ' <span class="chip">🌼 Intro · call the day before</span>' : '') + '</div>' +
         '<time>' + (x.lastCalledAt ? 'last call ' + ago(x.lastCalledAt) : '') + (x.programs ? ' · ' + esc(x.programs) : '') + '</time></div></div>' +
         (x.notes ? '<p class="muted tiny" style="margin:6px 0 0">📝 ' + esc(x.notes) + '</p>' : '') +
         '<div class="hact"><a class="btn call" href="' + telLink(x.phone) + '">' + ICON_PHONE + 'Call</a>' +
