@@ -122,14 +122,14 @@
     var b = e.target.closest('[data-edit]'); if (!b) return;
     var v = A.d.callers.filter(function (x) { return x.phone === b.dataset.edit; })[0];
     A.editing = v; $('#eTitle').textContent = v.name + ' · ' + v.phone;
-    $('#eName').value = v.name; $('#ePer').value = v.perDay; $('#eDays').value = v.daysLeft; $('#eActive').checked = v.active;
+    $('#eName').value = v.name; $('#ePhone').value = v.phone; $('#ePer').value = v.perDay; $('#eDays').value = v.daysLeft; $('#eActive').checked = v.active;
     $('#editWrap').classList.remove('hidden');
   };
   $('#eCancel').onclick = function () { $('#editWrap').classList.add('hidden'); };
   $('#eSave').onclick = function () {
     var v = A.editing;
-    call('saveCaller', { phone: v.phone, name: $('#eName').value, perDay: $('#ePer').value, days: $('#eDays').value, active: $('#eActive').checked, startDate: v.startDate || window.CONFIG.CAMPAIGN_START_DATE })
-      .then(function (r) { $('#editWrap').classList.add('hidden'); toast('Saved 🙏 ' + r.reserved + ' contacts assigned'); return load(); }).catch(function (e) { toast('⚠️ ' + e.message); });
+    call('saveCaller', { phone: v.phone, newPhone: $('#ePhone').value, name: $('#eName').value, perDay: $('#ePer').value, days: $('#eDays').value, active: $('#eActive').checked, startDate: v.startDate || window.CONFIG.CAMPAIGN_START_DATE })
+      .then(function (r) { $('#editWrap').classList.add('hidden'); toast(normPhone($('#ePhone').value) !== v.phone ? 'Saved 🙏 Ask the caller to log in with the new number' : 'Saved 🙏 ' + r.reserved + ' contacts assigned', 5000); return load(); }).catch(function (e) { toast('⚠️ ' + e.message); });
   };
   function startDay() { var s = window.CONFIG.CAMPAIGN_START_DATE, t = istDay(); return s > t ? s : t; }
   function autoDays() { return Math.max(0, daysBetween(startDay(), window.CONFIG.CAMPAIGN_END_DATE) + 1); }

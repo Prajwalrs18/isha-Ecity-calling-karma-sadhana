@@ -9,7 +9,8 @@ window.CONFIG = {
 
   CAMPAIGN_TITLE: 'Inner Engineering Calling · Karma Sadhana',
   CAMPAIGN_START_DATE: '2026-10-01', // first calling day — callers get no contacts before this
-  CAMPAIGN_END_DATE: '2026-10-26',   // last calling day. Used when "days" is left empty for a caller.
+  CAMPAIGN_END_DATE: '2026-10-26',
+  INTRO_DATE: '2026-10-12', INTRO_TIME: '6 AM',   // Intro session: callers remind their "Will join Intro" people the day before   // last calling day. Used when "days" is left empty for a caller.
   SECTOR: 'Isha · Electronic City Sector',
   POLL_SECONDS: 25,   // how often the team feed refreshes
 

@@ -114,6 +114,12 @@ function createCore(store) {
     var mine = log.filter(function (l) { return normPhone(l.callerPhone) === phone; });
     var todayMine = mine.filter(function (l) { return istDay(l.ts) === today; });
     var done = todayMine.filter(function (l) { return l.status !== 'no_answer'; }).length;
+    // calls owed from earlier days: from the caller's real first day (added mid-campaign = later start) until yesterday
+    var created = c.createdAt ? istDay(c.createdAt) : '', first = cv.startDate > created ? cv.startDate : created;
+    var lastPast = c.endDate && c.endDate < today ? addDays(c.endDate, 1) : today;
+    var pastDays = first && first < lastPast ? daysBetween(first, lastPast) : 0;
+    var doneBefore = mine.filter(function (l) { return istDay(l.ts) < today && l.status !== 'no_answer'; }).length;
+    var pending = cv.active ? Math.max(0, pastDays * cv.perDay - doneBefore) : 0;
     var contacts = store.all('Contacts');
     var inHand = contacts.filter(function (x) { return normPhone(x.assignedTo) === phone; });
     var over = !cv.active || cv.daysLeft <= 0, poolEmpty = false;
@@ -140,7 +146,7 @@ function createCore(store) {
     }
     var td = teamData(log, store.all('Callers'));
     return {
-      caller: cv, today: { done: done, dials: todayMine.length, target: cv.perDay },
+      caller: cv, today: { done: done, dials: todayMine.length, target: cv.perDay, pending: pending },
       inHand: inHand.map(contactView), over: over, poolEmpty: poolEmpty,
       stats: { total: mine.length, regs: mine.filter(function (l) { return l.status === 'registered'; }).length,
                reached: Object.keys(mine.reduce(function (m, l) { if (l.status !== 'no_answer' && l.status !== 'wrong_number') m[l.contactId] = 1; return m; }, {})).length,
@@ -244,6 +250,22 @@ function createCore(store) {
     var phone = normPhone(p.phone);
     if (phone.length < 10) throw new Error('Enter a valid 10-digit phone number');
     var existing = findCaller(phone);
+    var np = normPhone(p.newPhone);
+    if (existing && np && np !== phone) {
+      if (np.length !== 10) throw new Error('Enter a valid 10-digit new phone number');
+      if (findCaller(np)) throw new Error('Another caller already has ' + np);
+      var cs = store.all('Contacts');
+      cs.forEach(function (x) {
+        if (normPhone(x.reservedFor) === phone) x.reservedFor = np;
+        if (normPhone(x.assignedTo) === phone) x.assignedTo = np;
+        if (normPhone(x.calledBy) === phone) x.calledBy = np;
+      });
+      store.replaceAll('Contacts', cs);
+      var lg = store.all('Log'), moved = false;
+      lg.forEach(function (l) { if (normPhone(l.callerPhone) === phone) { l.callerPhone = np; moved = true; } });
+      if (moved) store.replaceAll('Log', lg);
+      existing.phone = np; phone = np;
+    }
     var days = Number(p.days);
     var row = existing || { phone: phone, createdAt: now(), active: 'true' };
     if (p.name) row.name = String(p.name).trim();

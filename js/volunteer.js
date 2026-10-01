@@ -115,6 +115,17 @@
     $('#daysLeft').textContent = st.caller.daysLeft + (st.caller.daysLeft === 1 ? ' day left' : ' days left');
     var r = st.stats.reached || 0;
     $('#myTotal').textContent = r ? 'You’ve offered this possibility to ' + r + (r === 1 ? ' person' : ' people') + ' 🙏' : 'Your first offering awaits 🙏';
+    var pend = st.today.pending || 0, dl = cv.daysLeft || 0, x = dl ? Math.ceil(pend / dl) : 0;
+    $('#catchUp').textContent = !pend || cv.notStarted || st.over ? ''
+      : 'You have ' + pend + ' pending call' + (pend === 1 ? '' : 's') + ' from earlier days 🌱 ' +
+        (pend <= dl ? 'Just 1 extra call a day for ' + pend + (pend === 1 ? ' day' : ' days') + ' will catch you up.'
+                    : x + ' extra calls a day for the remaining ' + dl + ' days will catch you up.');
+    var intro = C.INTRO_DATE && addDays(C.INTRO_DATE, -1) === istDay()
+      ? (st.followUps || []).filter(function (f) { return f.status === 'intro'; }).length : 0;
+    $('#introBanner').innerHTML = intro ? '<div class="card" style="text-align:center"><b>🌼 Intro is tomorrow at ' + esc(C.INTRO_TIME || '') +
+      '</b><p class="muted">Call your ' + intro + (intro === 1 ? ' person' : ' people') + ' who will join the Intro today and remind them 🙏</p>' +
+      '<button class="btn primary" id="introGo">Open Follow-ups</button></div>' : '';
+    if (intro) $('#introGo').onclick = function () { document.querySelector('.tabs [data-v="follow"]').click(); };
     renderContact(); renderTicker(); renderFollow();
   }
 
@@ -186,6 +197,13 @@
     };
   }
 
+  function numberGone(e) {   // admin changed or removed this number
+    if (!/not registered|Caller not found/.test(e && e.message)) return false;
+    LS.set('ics_phone', ''); S.st = null;
+    $('#app').classList.add('hidden'); $('#login').classList.remove('hidden'); $('#phoneIn').value = '';
+    $('#loginErr').textContent = 'Your number was updated by the admin. Please log in with your new number 🙏';
+    return true;
+  }
   function save(id, status, notes, fromList) {
     if (S.busy || !status) return;
     S.busy = true;
@@ -198,7 +216,7 @@
       var sm = SECTOR_MILESTONES.filter(function (m) { return prevTeam < m && st.team.dials >= m; }).pop();
       if (sm) setTimeout(function () { celebrate('🎊', 'The calling squad crossed ' + sm + ' calls!', 'And your call took us there. Thank you, everyone 🙏', true); }, 2500);
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    }).catch(function (e) { toast('⚠️ ' + e.message, 4000); if (card) card.classList.remove('loading'); })
+    }).catch(function (e) { if (numberGone(e)) return; toast('⚠️ ' + e.message, 4000); if (card) card.classList.remove('loading'); })
       .then(function () { S.busy = false; });
   }
 
@@ -240,11 +258,13 @@
     $('#ticker').innerHTML = items.join('');
   }
   /* follow-ups: contacts this caller marked "Follow up" */
+  function dayLabel(d) { return Number(d.slice(8, 10)) + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(d.slice(5, 7)) - 1]; }
+  function introWhen() { return dayLabel(C.INTRO_DATE) + (C.INTRO_TIME ? ', ' + C.INTRO_TIME : ''); }
   function renderFollow() {
     var f = S.st.followUps || [];
     $('#fuCount').textContent = f.length ? ' (' + f.length + ')' : '';
     $('#fuList').innerHTML = f.length ? f.map(function (x) {
-      return '<li data-id="' + esc(x.id) + '"><div class="hrow"><div><div class="hn">' + esc(x.name) + (x.status === 'intro' ? ' <span class="chip">🌼 Intro · call the day before</span>' : '') + '</div>' +
+      return '<li data-id="' + esc(x.id) + '"><div class="hrow"><div><div class="hn">' + esc(x.name) + (x.status === 'intro' ? ' <span class="chip">🌼 Intro' + (C.INTRO_DATE && istDay() <= C.INTRO_DATE ? ' ' + introWhen() + ' · call on ' + dayLabel(addDays(C.INTRO_DATE, -1)) : ' · call the day before') + '</span>' : '') + '</div>' +
         '<time>' + (x.lastCalledAt ? 'last call ' + ago(x.lastCalledAt) : '') + (x.programs ? ' · ' + esc(x.programs) : '') + '</time></div></div>' +
         (x.notes ? '<p class="muted tiny" style="margin:6px 0 0">📝 ' + esc(x.notes) + '</p>' : '') +
         '<div class="hact"><a class="btn call" href="' + telLink(x.phone) + '">' + ICON_PHONE + 'Call</a>' +
@@ -292,7 +312,7 @@
   /* misc */
   $('#logoutBtn').onclick = function () { LS.set('ics_phone', null); location.reload(); };
   document.addEventListener('visibilitychange', function () {  // coming back from the dialer: refresh
-    if (!document.hidden && S.st && !S.busy) api('state', { phone: S.phone }).then(function (st) { S.st = st; render(); }).catch(function () {});
+    if (!document.hidden && S.st && !S.busy) api('state', { phone: S.phone }).then(function (st) { S.st = st; render(); }).catch(numberGone);
   });
 
   initLogin();
