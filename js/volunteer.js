@@ -31,7 +31,7 @@
     var p = c.phone.length === 10 ? '91' + c.phone : c.phone;
     var txt = C.WHATSAPP_TEMPLATE
       .replace(c.programs ? '{programs}' : ' ({programs})', c.programs || '')
-      .replace('{name}', titleFirst(c.name)).replace('{caller}', titleFirst(S.st.caller.name));
+      .replace(titleFirst(c.name) ? '{name}' : ' {name}', titleFirst(c.name)).replace('{caller}', titleFirst(S.st.caller.name));
     return 'https://wa.me/' + p + '?text=' + encodeURIComponent(txt);
   }
 

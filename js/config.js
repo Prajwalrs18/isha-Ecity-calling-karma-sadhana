@@ -15,12 +15,32 @@ window.CONFIG = {
   POLL_SECONDS: 25,   // how often the team feed refreshes
 
   // WhatsApp message. {name} = contact first name, {caller} = volunteer first name, {programs} = programs they did
-  WHATSAPP_TEMPLATE:
-    'Namaskaram {name} 🙏\n\n' +
-    'This is {caller}, a volunteer with Isha Foundation, Electronic City.\n\n' +
-    'You have been part of Isha programs ({programs}), so I wanted to personally share that ' +
-    'Inner Engineering with Sadhguru is happening soon near you — a beautiful program for inner wellbeing.\n\n' +
-    'May I call you for 2 minutes to share the details? 🌸',
+  WHATSAPP_TEMPLATE:   // {name} = the contact's first name
+    "Namaskaram {name} 🙏🏼\n" +
+    "\n" +
+    "🌸 *Inner Engineering* at Electronic City \n" +
+    "\n" +
+    "A 4-day in-person program in English to explore powerful tools for wellbeing designed by Sadhguru.\n" +
+    "_Let’s take charge of our body, mind, emotions and energies._\n" +
+    "\n" +
+    "📽️ What is Inner Engineering?\n" +
+    "https://youtu.be/qP5pQQOpDeY\n" +
+    "\n" +
+    "🗓️ Oct 29 – Nov 1, 2026\n" +
+    "\n" +
+    "📍 Venue: Incture Technologies, Near Infosys Metro, Electronic City\n" +
+    "\n" +
+    "🎁 Free Introductory Talk: Oct 29 | 6:00–7:00 AM\n" +
+    "\n" +
+    "🔗 Register: isha.co/IE4-ECity-29Oct\n" +
+    "\n" +
+    "📞 Contact: +91 80959 63111\n" +
+    "\n" +
+    "✨ Interested to know more? Join the Isha Ecity WhatsApp group:\n" +
+    "https://chat.whatsapp.com/CdLEQqNQimMJialWorqQP8\n" +
+    "\n" +
+    "In love, light & laughter,\n" +
+    "Isha Volunteers 🪔",
 
   // Quotes shown across the app. Please verify wording against Isha's official sources before going live.
   // Add Sadhguru's volunteering quotes from official Isha material here, one per line.
