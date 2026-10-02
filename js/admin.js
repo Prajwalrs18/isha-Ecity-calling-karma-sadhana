@@ -98,7 +98,8 @@
     $('#dashCallers').innerHTML = '<tr><th>Caller</th><th>Today</th><th class="num">Dials</th><th class="num">Total</th><th class="num">Intro</th><th class="num">Reg</th><th class="num">Days left</th></tr>' +
       (rows.length ? rows.map(function (v) {
         var pct = Math.min(100, 100 * v.todayDone / v.perDay);
-        return '<tr class="' + (v.active ? '' : 'off') + '"><td><b>' + esc(v.name) + '</b><br><span class="muted">' + v.phone + '</span></td>' +
+        return '<tr class="' + (v.active ? '' : 'off') + '"><td><b>' + esc(v.name) + '</b><br><span class="muted">' + v.phone + '</span>' +
+          '<div class="c-acts"><a class="call" href="tel:+91' + v.phone + '">📞 Call</a><a class="wa" target="_blank" rel="noopener" href="https://wa.me/91' + v.phone + '?text=' + encodeURIComponent(nudgeText(v)) + '">💬 WhatsApp</a></div></td>' +
           '<td>' + v.todayDone + '/' + v.perDay + '<span class="bar-mini"><i style="width:' + pct + '%"></i></span></td><td class="num">' + v.todayDials + '</td><td class="num">' + v.dials + '</td>' +
           '<td class="num">' + v.intros + '</td><td class="num">' + v.regs + '</td><td class="num">' + v.daysLeft + '</td></tr>';
       }).join('') : '<tr><td colspan="7" class="empty">No callers yet — add them in the Callers tab</td></tr>');
@@ -107,6 +108,13 @@
       return '<li><span class="fi">' + s.emoji + '</span><div><b>' + esc(callerName(normPhone(l.callerPhone)) || l.callerName) + '</b> → ' + esc(l.contactName) + ': ' + esc(s.label) +
         (l.milestone === 'extra' ? ' ✨ extra' : '') + (l.notes ? ' <span class="muted">“' + esc(l.notes) + '”</span>' : '') + '<time>' + fmt(l.ts) + '</time></div></li>';
     }).join('') || '<li class="empty">No calls yet</li>';
+  }
+
+  function nudgeText(v) {   // warm check-in message from the admin to a caller
+    var n = firstName(v.name), left = v.perDay - v.todayDone;
+    return left > 0
+      ? 'Namaskaram ' + n + ' 🙏\n\nHope you are doing well. A gentle reminder for today’s Karma Sadhana calls: ' + v.todayDone + ' of ' + v.perDay + ' done, ' + left + ' more to go 🌸\n\nThank you for offering your time to make this happen.'
+      : 'Namaskaram ' + n + ' 🙏\n\nYou have completed today’s Karma Sadhana calls 🌸 Thank you so much for your offering!';
   }
 
   /* callers */
