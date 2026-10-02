@@ -238,6 +238,7 @@
     var hit = MILESTONES.filter(function (m) { return prevTotal < m && st.total >= m; })[0];
     if (hit) return celebrate('🌟', hit + ' calls, ' + name + '!', 'You have made ' + hit + ' calls in this Karma Sadhana. Every one of them was an offering 🙏', hit >= 50);
     if (status === 'registered') return celebrate('👏', 'A Registration! Jai, ' + name + '!', 'Someone is going to experience Inner Engineering because of your call. Everyone is clapping for you.', true);
+    if (milestone === 'update' && status !== 'intro') return toast('✅ Updated (not counted as a new call)');
     if (milestone === 'target') return celebrate('🙏', "Today's target complete!", 'Beautiful Karma Sadhana, ' + name + ' 🙏', false);
     if (status === 'intro') { FX.shower(45); FX.chime(); return toast('🌼 Wonderful! They will join the intro'); }
     if (status === 'interested_later') { FX.shower(25); return toast('🌱 A seed is planted. Thank you!'); }

@@ -106,7 +106,7 @@
     $('#recent').innerHTML = d.log.slice(0, 40).map(function (l) {
       var s = STATUS[l.status] || { emoji: '', label: l.status };
       return '<li><span class="fi">' + s.emoji + '</span><div><b>' + esc(callerName(normPhone(l.callerPhone)) || l.callerName) + '</b> → ' + esc(l.contactName) + ': ' + esc(s.label) +
-        (l.milestone === 'extra' ? ' ✨ extra' : '') + (l.notes ? ' <span class="muted">“' + esc(l.notes) + '”</span>' : '') + '<time>' + fmt(l.ts) + '</time></div></li>';
+        (l.milestone === 'extra' ? ' ✨ extra' : l.milestone === 'update' ? ' <span class="muted">(updated)</span>' : '') + (l.notes ? ' <span class="muted">“' + esc(l.notes) + '”</span>' : '') + '<time>' + fmt(l.ts) + '</time></div></li>';
     }).join('') || '<li class="empty">No calls yet</li>';
   }
 

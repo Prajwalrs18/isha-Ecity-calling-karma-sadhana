@@ -39,6 +39,8 @@ function addDays(day, n) {
 function daysBetween(a, b) {
   return Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 86400000);
 }
+// A changed result on someone already reached (e.g. Next time -> Not interested) is an update, not a new call
+function isCall(l) { return l.milestone !== 'update'; }
 function firstName(n) { return String(n || '').trim().split(/\s+/)[0] || ''; }
 
 function createCore(store) {
@@ -78,9 +80,11 @@ function createCore(store) {
     log.forEach(function (l) {
       var p = normPhone(l.callerPhone);
       var b = board[p] || (board[p] = { phone: p, name: names[p] || l.callerName, dials: 0, today: 0, regs: 0, intros: 0 });
-      b.dials++; team.dials++;
-      if (istDay(l.ts) === today) b.today++;
-      if (l.status !== 'no_answer' && l.status !== 'wrong_number') team.connects++;
+      if (isCall(l)) {
+        b.dials++; team.dials++;
+        if (istDay(l.ts) === today) b.today++;
+        if (l.status !== 'no_answer' && l.status !== 'wrong_number') team.connects++;
+      }
       if (l.status === 'registered') { b.regs++; team.regs++; }
       if (l.status === 'intro') { b.intros++; team.intros++; }
     });
@@ -99,7 +103,7 @@ function createCore(store) {
 
   function streakOf(mine, perDay) {
     var byDay = {};
-    mine.forEach(function (l) { if (l.status !== 'no_answer') { var d = istDay(l.ts); byDay[d] = (byDay[d] || 0) + 1; } });
+    mine.forEach(function (l) { if (isCall(l) && l.status !== 'no_answer') { var d = istDay(l.ts); byDay[d] = (byDay[d] || 0) + 1; } });
     var d = istDay(), s = 0;
     if ((byDay[d] || 0) < perDay) d = addDays(d, -1);
     while ((byDay[d] || 0) >= perDay) { s++; d = addDays(d, -1); }
@@ -112,13 +116,13 @@ function createCore(store) {
     var cv = callerView(c), phone = cv.phone, today = istDay();
     var log = store.all('Log');
     var mine = log.filter(function (l) { return normPhone(l.callerPhone) === phone; });
-    var todayMine = mine.filter(function (l) { return istDay(l.ts) === today; });
+    var todayMine = mine.filter(function (l) { return isCall(l) && istDay(l.ts) === today; });
     var done = todayMine.filter(function (l) { return l.status !== 'no_answer'; }).length;
     // calls owed from earlier days: from the caller's real first day (added mid-campaign = later start) until yesterday
     var created = c.createdAt ? istDay(c.createdAt) : '', first = cv.startDate > created ? cv.startDate : created;
     var lastPast = c.endDate && c.endDate < today ? addDays(c.endDate, 1) : today;
     var pastDays = first && first < lastPast ? daysBetween(first, lastPast) : 0;
-    var doneBefore = mine.filter(function (l) { return istDay(l.ts) < today && l.status !== 'no_answer'; }).length;
+    var doneBefore = mine.filter(function (l) { return isCall(l) && istDay(l.ts) < today && l.status !== 'no_answer'; }).length;
     var pending = cv.active ? Math.max(0, pastDays * cv.perDay - doneBefore) : 0;
     var contacts = store.all('Contacts');
     var inHand = contacts.filter(function (x) { return normPhone(x.assignedTo) === phone; });
@@ -148,7 +152,7 @@ function createCore(store) {
     return {
       caller: cv, today: { done: done, dials: todayMine.length, target: cv.perDay, pending: pending },
       inHand: inHand.map(contactView), over: over, poolEmpty: poolEmpty,
-      stats: { total: mine.length, regs: mine.filter(function (l) { return l.status === 'registered'; }).length,
+      stats: { total: mine.filter(isCall).length, regs: mine.filter(function (l) { return l.status === 'registered'; }).length,
                reached: Object.keys(mine.reduce(function (m, l) { if (l.status !== 'no_answer' && l.status !== 'wrong_number') m[l.contactId] = 1; return m; }, {})).length,
                streak: streakOf(mine, cv.perDay) },
       history: history, feed: td.feed, board: td.board, team: td.team,
@@ -167,15 +171,18 @@ function createCore(store) {
       throw new Error('This contact is no longer assigned to you');
     var today = istDay();
     var done = store.all('Log').filter(function (l) {
-      return normPhone(l.callerPhone) === phone && istDay(l.ts) === today && l.status !== 'no_answer';
+      return isCall(l) && normPhone(l.callerPhone) === phone && istDay(l.ts) === today && l.status !== 'no_answer';
     }).length;
-    var milestone = '';
-    if (p.status !== 'no_answer') {
+    // Already reached earlier (any result except "Didn't receive") = just an update, not a call
+    var isUpdate = !!contact.status && contact.status !== 'no_answer';
+    var milestone = isUpdate ? 'update' : '';
+    if (isUpdate && contact.status === p.status && !p.notes) { var same = state({ phone: phone }); same.saved = p.status; return same; }   // nothing changed
+    if (!isUpdate && p.status !== 'no_answer') {
       if (done + 1 === cv.perDay) milestone = 'target';
       else if (done + 1 > cv.perDay) milestone = 'extra';
     }
     contact.status = p.status;
-    contact.attempts = (Number(contact.attempts) || 0) + 1;
+    if (!isUpdate) contact.attempts = (Number(contact.attempts) || 0) + 1;
     contact.lastCalledAt = now();
     contact.calledBy = phone;
     if (p.notes) contact.notes = (contact.notes ? contact.notes + ' | ' : '') + p.notes;
@@ -206,9 +213,9 @@ function createCore(store) {
     var cl = callers.map(function (c) {
       var v = callerView(c), p = v.phone;
       var mine = log.filter(function (l) { return normPhone(l.callerPhone) === p; });
-      v.todayDone = mine.filter(function (l) { return istDay(l.ts) === today && l.status !== 'no_answer'; }).length;
-      v.todayDials = mine.filter(function (l) { return istDay(l.ts) === today; }).length;
-      v.dials = mine.length;
+      v.todayDone = mine.filter(function (l) { return isCall(l) && istDay(l.ts) === today && l.status !== 'no_answer'; }).length;
+      v.todayDials = mine.filter(function (l) { return isCall(l) && istDay(l.ts) === today; }).length;
+      v.dials = mine.filter(isCall).length;
       v.regs = mine.filter(function (l) { return l.status === 'registered'; }).length;
       v.intros = mine.filter(function (l) { return l.status === 'intro'; }).length;
       v.inHand = contacts.filter(function (x) { return normPhone(x.assignedTo) === p; }).length;
@@ -236,8 +243,7 @@ function createCore(store) {
     log.forEach(function (l) {
       var d = istDay(l.ts), o = out[d] || (out[d] = { calls: 0, connects: 0, intros: 0, regs: 0, extra: {}, regBy: {} });
       var who = names[normPhone(l.callerPhone)] || firstName(l.callerName);
-      o.calls++;
-      if (l.status !== 'no_answer' && l.status !== 'wrong_number') o.connects++;
+      if (isCall(l)) { o.calls++; if (l.status !== 'no_answer' && l.status !== 'wrong_number') o.connects++; }
       if (l.status === 'intro') o.intros++;
       if (l.status === 'registered') { o.regs++; o.regBy[who] = 1; }
       if (l.milestone === 'extra') o.extra[who] = 1;
