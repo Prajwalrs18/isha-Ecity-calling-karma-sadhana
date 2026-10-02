@@ -38,3 +38,8 @@
   .form, .filters { grid-template-columns: 1fr; }
   .bars .bar { grid-template-columns: 120px 1fr 40px; }
 }
+
+.c-acts { display: flex; gap: 6px; margin-top: 6px; }
+.c-acts a { font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: 8px; color: #fff; text-decoration: none; white-space: nowrap; }
+.c-acts a.call { background: var(--green); }
+.c-acts a.wa { background: var(--wa); }
