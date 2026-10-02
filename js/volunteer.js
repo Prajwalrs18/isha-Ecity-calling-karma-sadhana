@@ -51,8 +51,8 @@
     if (window.isTest) {
       var tb = document.createElement('div');
       tb.textContent = '🧪 TEST MODE — practice only, nothing is saved to the sheet. Calls go to your own number.';
-      tb.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:95;background:#1F8A4C;color:#fff;font:600 12px Poppins,sans-serif;padding:6px 10px;text-align:center';
-      document.body.appendChild(tb);
+      tb.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:95;background:#1F8A4C;color:#fff;font:600 12px Poppins,sans-serif;padding:6px 10px;text-align:center';
+      document.body.appendChild(tb); document.body.style.paddingTop = tb.offsetHeight + 'px';
     }
     FX.ambient(true);
     var saved = LS.get('ics_phone');
@@ -260,19 +260,31 @@
   /* follow-ups: contacts this caller marked "Follow up" */
   function dayLabel(d) { return Number(d.slice(8, 10)) + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(d.slice(5, 7)) - 1]; }
   function introWhen() { return dayLabel(C.INTRO_DATE) + (C.INTRO_TIME ? ', ' + C.INTRO_TIME : ''); }
-  function renderFollow() {
-    var f = S.st.followUps || [];
-    $('#fuCount').textContent = f.length ? ' (' + f.length + ')' : '';
-    $('#fuList').innerHTML = f.length ? f.map(function (x) {
-      return '<li data-id="' + esc(x.id) + '"><div class="hrow"><div><div class="hn">' + esc(x.name) + (x.status === 'intro' ? ' <span class="chip">🌼 Intro' + (C.INTRO_DATE && istDay() <= C.INTRO_DATE ? ' ' + introWhen() + ' · call on ' + dayLabel(addDays(C.INTRO_DATE, -1)) : ' · call the day before') + '</span>' : '') + '</div>' +
-        '<time>' + (x.lastCalledAt ? 'last call ' + ago(x.lastCalledAt) : '') + (x.programs ? ' · ' + esc(x.programs) : '') + '</time></div></div>' +
+  var FU_GROUPS = [
+    ['follow_up', '📌 Follow up', 'No follow-ups yet. When someone asks you to call back, mark the call “📌 Follow up”.'],
+    ['intro', '🌼 Will join Intro', 'Nobody yet. People you mark “🌼 Will join Intro” appear here.'],
+    ['no_answer', '📵 Didn’t receive', 'If someone who didn’t pick up calls you back, update them here. If not, they come back in your calling list.']
+  ];
+  function fuItem(x) {
+    return '<li data-id="' + esc(x.id) + '"><div class="hrow"><div><div class="hn">' + esc(x.name) + (x.status === 'intro' ? ' <span class="chip">🌼 Intro' + (C.INTRO_DATE && istDay() <= C.INTRO_DATE ? ' ' + introWhen() + ' · call on ' + dayLabel(addDays(C.INTRO_DATE, -1)) : ' · call the day before') + '</span>' : '') + '</div>' +
+        '<time>' + (x.lastCalledAt ? 'last call ' + ago(x.lastCalledAt) : '') + (x.status === 'no_answer' && x.attempts ? ' · tried ' + x.attempts + 'x' : '') + (x.programs ? ' · ' + esc(x.programs) : '') + '</time></div></div>' +
         (x.notes ? '<p class="muted tiny" style="margin:6px 0 0">📝 ' + esc(x.notes) + '</p>' : '') +
         '<div class="hact"><a class="btn call" href="' + telLink(x.phone) + '">' + ICON_PHONE + 'Call</a>' +
         '<a class="btn wa" target="_blank" rel="noopener" href="' + waLink(x) + '">' + ICON_CHAT + 'WhatsApp</a>' +
         '<button class="btn ghost" data-up="1">Update</button></div>' +
         '<div class="fu-edit hidden"><div class="status-grid">' + statusButtons(null) + '</div>' +
         '<textarea placeholder="Note (optional)"></textarea><button class="btn primary big" data-save="1" disabled>Save</button></div></li>';
-    }).join('') : '<li class="empty">No follow-ups yet. When someone asks you to call back, mark the call “📌 Follow up” and they will appear here.</li>';
+  }
+  function renderFollow() {
+    var f = S.st.followUps || [];
+    var open = f.filter(function (x) { return x.status !== 'no_answer'; }).length;   // badge: people waiting for a call back
+    $('#fuCount').textContent = open ? ' (' + open + ')' : '';
+    $('#fuList').innerHTML = FU_GROUPS.map(function (g) {
+      var items = f.filter(function (x) { return x.status === g[0]; });
+      return '<li class="fu-h" style="list-style:none;padding:14px 0 4px;border:0"><b>' + g[1] + ' (' + items.length + ')</b>' +
+        (g[0] === 'no_answer' && items.length ? '<div class="muted tiny">' + g[2] + '</div>' : '') + '</li>' +
+        (items.length ? items.map(fuItem).join('') : '<li class="empty">' + g[2] + '</li>');
+    }).join('');
   }
   $('#fuList').onclick = function (e) {
     var li = e.target.closest('li[data-id]'); if (!li) return;

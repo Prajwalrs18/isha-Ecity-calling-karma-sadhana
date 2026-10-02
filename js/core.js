@@ -152,7 +152,7 @@ function createCore(store) {
                reached: Object.keys(mine.reduce(function (m, l) { if (l.status !== 'no_answer' && l.status !== 'wrong_number') m[l.contactId] = 1; return m; }, {})).length,
                streak: streakOf(mine, cv.perDay) },
       history: history, feed: td.feed, board: td.board, team: td.team,
-      followUps: contacts.filter(function (x) { return (x.status === 'follow_up' || x.status === 'intro') && normPhone(x.calledBy) === phone; }).map(contactView)
+      followUps: contacts.filter(function (x) { return (x.status === 'follow_up' || x.status === 'intro' || x.status === 'no_answer') && normPhone(x.calledBy) === phone; }).map(contactView)
     };
   }
 
