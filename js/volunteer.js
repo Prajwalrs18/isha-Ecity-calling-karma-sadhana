@@ -57,11 +57,13 @@
     FX.ambient(true);
     var saved = LS.get('ics_phone');
     if (saved) { $('#phoneIn').value = saved; }
-    $('#loginBtn').onclick = login;
+    $('#loginBtn').onclick = function () { login(); };
     $('#phoneIn').onkeydown = function (e) { if (e.key === 'Enter') login(); };
+    // Phones with little memory reload the page after a call: go straight back in, no need to log in again
+    if (saved && normPhone(saved).length === 10) login(true);
   }
-  function login() {
-    FX.unlockAudio();
+  function login(resume) {
+    if (!resume) FX.unlockAudio();
     var p = normPhone($('#phoneIn').value);
     $('#loginErr').textContent = '';
     if (p.length !== 10) { $('#loginErr').textContent = 'Please enter your 10-digit mobile number'; return; }
@@ -69,7 +71,7 @@
     api('login', { phone: p }).then(function (st) {
       S.phone = p; S.st = st; LS.set('ics_phone', p);
       S.lastSeen = LS.get('ics_lastSeen_' + p) || (st.feed[0] && st.feed[0].ts) || new Date().toISOString();
-      showWelcome();
+      if (resume) { $('#login').classList.add('hidden'); enterApp(); } else showWelcome();
     }).catch(function (e) {
       $('#loginErr').textContent = e.message;
     }).then(function () { b.disabled = false; b.textContent = 'Begin my Karma Sadhana 🌸'; });
