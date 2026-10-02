@@ -262,10 +262,15 @@
   /* follow-ups: contacts this caller marked "Follow up" */
   function dayLabel(d) { return Number(d.slice(8, 10)) + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(d.slice(5, 7)) - 1]; }
   function introWhen() { return dayLabel(C.INTRO_DATE) + (C.INTRO_TIME ? ', ' + C.INTRO_TIME : ''); }
-  var FU_GROUPS = [   // [status, tab label, colour, empty text]
+  var FU_GROUPS = [   // [status, tab label, colour, empty text] — one tab per call result
     ['follow_up', '📌 Follow up', '#2563A8', 'No follow-ups. When someone asks you to call back, mark the call “📌 Follow up”.'],
     ['intro', '🌼 Intro', '#C98A0B', 'Nobody yet. People you mark “🌼 Will join Intro” appear here.'],
-    ['no_answer', '📵 No answer', '#7A6E66', 'Nobody here. People who didn’t pick up appear here, in case they call you back.']
+    ['interested_later', '🌱 Next time', '#3C8D2F', 'Nobody marked “Interested – next time” yet.'],
+    ['no_answer', '📵 No answer', '#7A6E66', 'Nobody here. People who didn’t pick up appear here, in case they call you back.'],
+    ['budget', '💰 Budget', '#8A5A12', 'Nobody marked “Budget issue” yet.'],
+    ['not_interested', '🙏 Not interested', '#9A4B5B', 'Nobody marked “Not interested” yet.'],
+    ['wrong_number', '❌ Wrong no.', '#B8142C', 'Nobody marked “Wrong number” yet.'],
+    ['registered', '🎉 Registered', '#1F8A4C', 'No registrations yet — your next call could be the one 🌸']
   ];
   function fuItem(x, g) {
     var meta = [x.lastCalledAt ? 'last call ' + ago(x.lastCalledAt) : '', x.status === 'no_answer' && x.attempts ? 'tried ' + x.attempts + 'x' : '', x.programs ? esc(x.programs) : '']
@@ -283,9 +288,9 @@
   }
   function renderFollow() {
     var f = S.st.followUps || [];
-    var open = f.filter(function (x) { return x.status !== 'no_answer'; }).length;   // badge: people waiting for a call back
+    var open = f.filter(function (x) { return x.status === 'follow_up' || x.status === 'intro'; }).length;   // badge: people waiting for a call back
     $('#fuCount').textContent = open ? ' (' + open + ')' : '';
-    if (!S.fuTab) S.fuTab = (FU_GROUPS.filter(function (g) { return f.some(function (x) { return x.status === g[0]; }); })[0] || FU_GROUPS[0])[0];
+    if (!S.fuTabPicked) S.fuTab = (FU_GROUPS.filter(function (g) { return f.some(function (x) { return x.status === g[0]; }); })[0] || FU_GROUPS[0])[0];
     $('#fuTabs').innerHTML = FU_GROUPS.map(function (g) {
       var n = f.filter(function (x) { return x.status === g[0]; }).length;
       return '<button data-tab="' + g[0] + '" class="' + (S.fuTab === g[0] ? 'on' : '') + '" style="--c:' + g[2] + '">' + g[1] + ' <b>' + n + '</b></button>';
@@ -296,7 +301,7 @@
   }
   $('#fuTabs').onclick = function (e) {
     var b = e.target.closest('[data-tab]'); if (!b) return;
-    S.fuTab = b.dataset.tab; renderFollow();
+    S.fuTab = b.dataset.tab; S.fuTabPicked = true; renderFollow();
   };
   $('#fuList').onchange = function (e) {
     var li = e.target.closest('li[data-id]'); if (li) li.querySelector('[data-save]').disabled = !e.target.value;
