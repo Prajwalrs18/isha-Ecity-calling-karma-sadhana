@@ -215,8 +215,8 @@ textarea { width: 100%; min-height: 64px; border-radius: 12px; border: 1.5px sol
 }
 
 /* follow-ups: tabs + one clean card per person */
-.fu-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 12px 0 14px; }
-.fu-tabs button { border: 2px solid var(--line); background: #fff; border-radius: 12px; padding: 9px 4px; font: 600 13px var(--sans); color: var(--ink); line-height: 1.25; }
+.fu-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 12px 0 14px; }
+.fu-tabs button { border: 2px solid var(--line); background: #fff; border-radius: 12px; padding: 7px 3px; font: 600 11.5px var(--sans); color: var(--ink); line-height: 1.2; }
 .fu-tabs button b { display: block; font-size: 17px; }
 .fu-tabs button.on { background: var(--c); border-color: var(--c); color: #fff; }
 .fu-list { list-style: none; margin: 0; padding: 0; }
