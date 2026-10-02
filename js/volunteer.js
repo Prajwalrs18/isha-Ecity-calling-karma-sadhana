@@ -262,41 +262,48 @@
   /* follow-ups: contacts this caller marked "Follow up" */
   function dayLabel(d) { return Number(d.slice(8, 10)) + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(d.slice(5, 7)) - 1]; }
   function introWhen() { return dayLabel(C.INTRO_DATE) + (C.INTRO_TIME ? ', ' + C.INTRO_TIME : ''); }
-  var FU_GROUPS = [
-    ['follow_up', '📌 Follow up', 'No follow-ups yet. When someone asks you to call back, mark the call “📌 Follow up”.'],
-    ['intro', '🌼 Will join Intro', 'Nobody yet. People you mark “🌼 Will join Intro” appear here.'],
-    ['no_answer', '📵 Didn’t receive', 'If someone who didn’t pick up calls you back, update them here. If not, they come back in your calling list.']
+  var FU_GROUPS = [   // [status, tab label, colour, empty text]
+    ['follow_up', '📌 Follow up', '#2563A8', 'No follow-ups. When someone asks you to call back, mark the call “📌 Follow up”.'],
+    ['intro', '🌼 Intro', '#C98A0B', 'Nobody yet. People you mark “🌼 Will join Intro” appear here.'],
+    ['no_answer', '📵 No answer', '#7A6E66', 'Nobody here. People who didn’t pick up appear here, in case they call you back.']
   ];
-  function fuItem(x) {
-    return '<li data-id="' + esc(x.id) + '"><div class="hrow"><div><div class="hn">' + esc(x.name) + (x.status === 'intro' ? ' <span class="chip">🌼 Intro' + (C.INTRO_DATE && istDay() <= C.INTRO_DATE ? ' ' + introWhen() + ' · call on ' + dayLabel(addDays(C.INTRO_DATE, -1)) : ' · call the day before') + '</span>' : '') + '</div>' +
-        '<time>' + (x.lastCalledAt ? 'last call ' + ago(x.lastCalledAt) : '') + (x.status === 'no_answer' && x.attempts ? ' · tried ' + x.attempts + 'x' : '') + (x.programs ? ' · ' + esc(x.programs) : '') + '</time></div></div>' +
-        (x.notes ? '<p class="muted tiny" style="margin:6px 0 0">📝 ' + esc(x.notes) + '</p>' : '') +
-        '<div class="hact"><a class="btn call" href="' + telLink(x.phone) + '">' + ICON_PHONE + 'Call</a>' +
-        '<a class="btn wa" target="_blank" rel="noopener" href="' + waLink(x) + '">' + ICON_CHAT + 'WhatsApp</a>' +
-        '<button class="btn ghost" data-up="1">Update</button></div>' +
-        '<div class="fu-edit hidden"><div class="status-grid">' + statusButtons(null) + '</div>' +
-        '<textarea placeholder="Note (optional)"></textarea><button class="btn primary big" data-save="1" disabled>Save</button></div></li>';
+  function fuItem(x, g) {
+    var meta = [x.lastCalledAt ? 'last call ' + ago(x.lastCalledAt) : '', x.status === 'no_answer' && x.attempts ? 'tried ' + x.attempts + 'x' : '', x.programs ? esc(x.programs) : '']
+      .filter(String).join(' · ');
+    return '<li class="fu-card" data-id="' + esc(x.id) + '" style="border-left-color:' + g[2] + '">' +
+      '<div class="fu-name">' + esc(x.name) + '</div>' +
+      (x.status === 'intro' ? '<div class="fu-tag">🌼 Intro ' + (C.INTRO_DATE && istDay() <= C.INTRO_DATE ? introWhen() + ' · call on ' + dayLabel(addDays(C.INTRO_DATE, -1)) : '· call the day before') + '</div>' : '') +
+      '<div class="fu-meta">' + meta + '</div>' +
+      (x.notes ? '<div class="fu-meta">📝 ' + esc(x.notes) + '</div>' : '') +
+      '<div class="fu-acts"><a class="btn call" href="' + telLink(x.phone) + '">' + ICON_PHONE + 'Call</a>' +
+      '<a class="btn wa" target="_blank" rel="noopener" href="' + waLink(x) + '">' + ICON_CHAT + 'WhatsApp</a></div>' +
+      '<div class="fu-update"><select><option value="">What happened?</option>' +
+      Object.keys(STATUS).map(function (k) { return '<option value="' + k + '">' + STATUS[k].emoji + ' ' + esc(STATUS[k].label) + '</option>'; }).join('') +
+      '</select><button class="btn primary" data-save="1" disabled>Update</button></div></li>';
   }
   function renderFollow() {
     var f = S.st.followUps || [];
     var open = f.filter(function (x) { return x.status !== 'no_answer'; }).length;   // badge: people waiting for a call back
     $('#fuCount').textContent = open ? ' (' + open + ')' : '';
-    $('#fuList').innerHTML = FU_GROUPS.map(function (g) {
-      var items = f.filter(function (x) { return x.status === g[0]; });
-      return '<li class="fu-h" style="list-style:none;padding:14px 0 4px;border:0"><b>' + g[1] + ' (' + items.length + ')</b>' +
-        (g[0] === 'no_answer' && items.length ? '<div class="muted tiny">' + g[2] + '</div>' : '') + '</li>' +
-        (items.length ? items.map(fuItem).join('') : '<li class="empty">' + g[2] + '</li>');
+    if (!S.fuTab) S.fuTab = (FU_GROUPS.filter(function (g) { return f.some(function (x) { return x.status === g[0]; }); })[0] || FU_GROUPS[0])[0];
+    $('#fuTabs').innerHTML = FU_GROUPS.map(function (g) {
+      var n = f.filter(function (x) { return x.status === g[0]; }).length;
+      return '<button data-tab="' + g[0] + '" class="' + (S.fuTab === g[0] ? 'on' : '') + '" style="--c:' + g[2] + '">' + g[1] + ' <b>' + n + '</b></button>';
     }).join('');
+    var g = FU_GROUPS.filter(function (x) { return x[0] === S.fuTab; })[0];
+    var items = f.filter(function (x) { return x.status === g[0]; });
+    $('#fuList').innerHTML = items.length ? items.map(function (x) { return fuItem(x, g); }).join('') : '<li class="empty">' + g[3] + '</li>';
   }
+  $('#fuTabs').onclick = function (e) {
+    var b = e.target.closest('[data-tab]'); if (!b) return;
+    S.fuTab = b.dataset.tab; renderFollow();
+  };
+  $('#fuList').onchange = function (e) {
+    var li = e.target.closest('li[data-id]'); if (li) li.querySelector('[data-save]').disabled = !e.target.value;
+  };
   $('#fuList').onclick = function (e) {
-    var li = e.target.closest('li[data-id]'); if (!li) return;
-    if (e.target.closest('[data-up]')) { li.querySelector('.fu-edit').classList.toggle('hidden'); return; }
-    var sb = e.target.closest('.sbtn');
-    if (sb) {
-      [].forEach.call(li.querySelectorAll('.sbtn'), function (x) { x.classList.toggle('on', x === sb); });
-      li.dataset.sel = sb.dataset.s; li.querySelector('[data-save]').disabled = false; return;
-    }
-    if (e.target.closest('[data-save]')) save(li.dataset.id, li.dataset.sel, li.querySelector('textarea').value, true);
+    var li = e.target.closest('li[data-id]'); if (!li || !e.target.closest('[data-save]')) return;
+    var v = li.querySelector('select').value; if (v) save(li.dataset.id, v, '', true);
   };
   document.querySelector('.tabs').onclick = function (e) {
     var b = e.target.closest('button'); if (!b) return;
