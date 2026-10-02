@@ -251,7 +251,7 @@
     extra: ['✨', ' went the <b>extra mile</b> with one more call'], target: ['🙏', " completed today's <b>target</b>"]
   };
   function renderTicker() {
-    var f = S.st.feed.slice(0, 8);
+    var today = istDay(), f = S.st.feed.filter(function (x) { return istDay(x.ts) === today; }).slice(0, 8);   // today's news only
     var items = f.length ? f.map(function (x) {
       return '<span>' + FEED_TXT[x.type][0] + ' ' + esc(x.phone === S.phone ? 'You' : x.who) + FEED_TXT[x.type][1].replace(/<\/?b>/g, '').replace(x.phone === S.phone ? ' has ' : '#', ' have ') + '</span>';
     }) : ['<span>🌸 ' + S.st.team.dials + ' calls made by the calling squad so far</span>'];
