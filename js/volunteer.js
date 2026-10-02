@@ -271,7 +271,8 @@
     ['budget', '💰 Budget', '#8A5A12', 'Nobody marked “Budget issue” yet.'],
     ['not_interested', '🙏 Not interested', '#9A4B5B', 'Nobody marked “Not interested” yet.'],
     ['wrong_number', '❌ Wrong no.', '#B8142C', 'Nobody marked “Wrong number” yet.'],
-    ['registered', '🎉 Registered', '#1F8A4C', 'No registrations yet — your next call could be the one 🌸']
+    ['registered', '🎉 Registered', '#1F8A4C', 'No registrations yet — your next call could be the one 🌸'],
+    ['completed_ie', '🪷 Completed IE', '#6A4C93', 'Nobody marked “Completed Inner Engineering” yet.']
   ];
   function fuItem(x, g) {
     var meta = [x.lastCalledAt ? 'last call ' + ago(x.lastCalledAt) : '', x.status === 'no_answer' && x.attempts ? 'tried ' + x.attempts + 'x' : '', x.programs ? esc(x.programs) : '']
@@ -285,7 +286,7 @@
       '<a class="btn wa" target="_blank" rel="noopener" href="' + waLink(x) + '">' + ICON_CHAT + 'WhatsApp</a></div>' +
       '<div class="fu-update"><select><option value="">What happened?</option>' +
       Object.keys(STATUS).map(function (k) { return '<option value="' + k + '">' + STATUS[k].emoji + ' ' + esc(STATUS[k].label) + '</option>'; }).join('') +
-      '</select><button class="btn primary" data-save="1" disabled>Update</button></div></li>';
+      '</select><input class="fu-note" placeholder="Remarks (optional)"><button class="btn primary" data-save="1" disabled>Update</button></div></li>';
   }
   function renderFollow() {
     var f = S.st.followUps || [];
@@ -305,11 +306,11 @@
     S.fuTab = b.dataset.tab; S.fuTabPicked = true; renderFollow();
   };
   $('#fuList').onchange = function (e) {
-    var li = e.target.closest('li[data-id]'); if (li) li.querySelector('[data-save]').disabled = !e.target.value;
+    var li = e.target.closest('li[data-id]'); if (li && e.target.tagName === 'SELECT') li.querySelector('[data-save]').disabled = !e.target.value;
   };
   $('#fuList').onclick = function (e) {
     var li = e.target.closest('li[data-id]'); if (!li || !e.target.closest('[data-save]')) return;
-    var v = li.querySelector('select').value; if (v) save(li.dataset.id, v, '', true);
+    var v = li.querySelector('select').value; if (v) save(li.dataset.id, v, li.querySelector('.fu-note').value, true);
   };
   document.querySelector('.tabs').onclick = function (e) {
     var b = e.target.closest('button'); if (!b) return;

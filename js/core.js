@@ -12,7 +12,8 @@ var STATUS = {
   budget:           { label: 'Budget issue',           emoji: '💰' },
   not_interested:   { label: 'Not interested',         emoji: '🙏' },
   no_answer:        { label: "Didn't receive",         emoji: '📵' },
-  wrong_number:     { label: 'Wrong number',           emoji: '❌' }
+  wrong_number:     { label: 'Wrong number',           emoji: '❌' },
+  completed_ie:     { label: 'Completed Inner Engineering', emoji: '🪷' }
 };
 var TABLES = {
   Contacts: ['id', 'name', 'phone', 'email', 'programs', 'reservedFor', 'assignedTo', 'assignedAt',
