@@ -123,6 +123,11 @@
       b.blur(); toast('Follow-up saved 🙏'); return load();
     }).catch(function (e) { toast('⚠️ ' + e.message); }).then(function () { b.disabled = false; });
   };
+  $('#syncAll').onclick = function () {
+    var b = this; b.disabled = true;
+    call('syncAll').then(function (r) { toast('Synced 🙏 ' + r.unassigned + ' contacts unassigned'); return load(); })
+      .catch(function (e) { toast('⚠️ ' + e.message); }).then(function () { b.disabled = false; });
+  };
   function nudgeText(v) {   // warm check-in message from the admin to a caller
     var n = firstName(v.name), left = v.perDay - v.todayDone;
     return left > 0

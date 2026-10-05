@@ -291,20 +291,38 @@ function createCore(store) {
     return { ok: true, created: !existing, reserved: reserved };
   }
 
-  /* Top a caller up to `target` uncalled contacts from the remaining master sheet.
-     Never takes contacts away (so a caller's own uploaded list stays theirs), except when target is 0
-     (caller made inactive) — then all their uncalled contacts go back to the common pool. */
+  /* Keep a caller holding exactly `target` uncalled contacts (= calls per day x days left).
+     Too many -> the extra go back to the unassigned pool. Too few -> top up from the pool.
+     Contacts already called, or open on the caller's screen right now, are never moved. */
+  function rebalanceIn(all, phone, target) {
+    var mine = all.filter(function (x) { return normPhone(x.reservedFor) === phone && !x.status; });
+    var need = target - mine.length, changed = false;
+    if (need > 0) {
+      all.forEach(function (x) { if (need > 0 && !x.status && !x.assignedTo && !x.reservedFor) { x.reservedFor = phone; need--; changed = true; } });
+    } else if (need < 0) {
+      for (var i = mine.length - 1; i >= 0 && need < 0; i--) {   // give back the last-added ones first
+        if (!mine[i].assignedTo) { mine[i].reservedFor = ''; need++; changed = true; }
+      }
+    }
+    return changed;
+  }
+  function targetOf(c) { var cv = callerView(c); return cv.active ? cv.perDay * cv.daysLeft : 0; }
   function rebalance(phone, target) {
     var all = store.all('Contacts');
-    var mine = all.filter(function (x) { return normPhone(x.reservedFor) === phone && !x.status && !x.assignedTo; });
-    var need = target - mine.length;
-    if (need > 0) {
-      all.forEach(function (x) { if (need > 0 && !x.status && !x.assignedTo && !x.reservedFor) { x.reservedFor = phone; need--; } });
-    } else if (target === 0) {
-      mine.forEach(function (x) { x.reservedFor = ''; });
-    }
-    store.replaceAll('Contacts', all);
+    if (rebalanceIn(all, phone, target)) store.replaceAll('Contacts', all);
     return all.filter(function (x) { return normPhone(x.reservedFor) === phone && !x.status; }).length;
+  }
+  /* admin: bring every caller in line with calls/day x days left (one read, one write) */
+  function syncAll() {
+    var all = store.all('Contacts'), changed = false, callers = store.all('Callers');
+    var held = function (c) { return all.filter(function (x) { return normPhone(x.reservedFor) === normPhone(c.phone) && !x.status; }).length; };
+    [true, false].forEach(function (releasing) {   // first give back extras, then top up from the freed pool
+      callers.forEach(function (c) {
+        if ((held(c) > targetOf(c)) === releasing && rebalanceIn(all, normPhone(c.phone), targetOf(c))) changed = true;
+      });
+    });
+    if (changed) store.replaceAll('Contacts', all);
+    return { ok: true, unassigned: all.filter(function (x) { return !x.status && !x.assignedTo && !x.reservedFor; }).length };
   }
 
   function releaseInHand(phone) {
@@ -380,7 +398,7 @@ function createCore(store) {
     return { ok: true, followedBy: c.followedBy, followedAt: c.followedAt };
   }
 
-  return { markFollow: markFollow, state: state, login: state, submit: submit, feed: feed, adminData: adminData, saveCaller: saveCaller,
+  return { syncAll: syncAll, markFollow: markFollow, state: state, login: state, submit: submit, feed: feed, adminData: adminData, saveCaller: saveCaller,
            uploadContacts: uploadContacts, assignContacts: assignContacts, assignBulk: assignBulk };
 }
 
