@@ -43,3 +43,10 @@
 .c-acts a { font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: 8px; color: #fff; text-decoration: none; white-space: nowrap; }
 .c-acts a.call { background: var(--green); }
 .c-acts a.wa { background: var(--wa); }
+.fu-cell { min-width: 190px; }
+.fu-last { font-size: 12.5px; font-weight: 600; color: var(--green); margin-bottom: 5px; }
+.fu-last.none { color: var(--muted); font-weight: 500; }
+.fu-form { display: flex; gap: 4px; }
+.fu-form input { min-width: 0; font: 12px var(--sans); padding: 4px 6px; border: 1.5px solid var(--line); border-radius: 7px; background: #fff; }
+.fu-form .fu-by { width: 78px; }
+.fu-form .fu-date { width: 112px; }
