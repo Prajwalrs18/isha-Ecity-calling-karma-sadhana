@@ -18,7 +18,7 @@ var STATUS = {
 var TABLES = {
   Contacts: ['id', 'name', 'phone', 'email', 'programs', 'reservedFor', 'assignedTo', 'assignedAt',
              'status', 'attempts', 'lastCalledAt', 'calledBy', 'notes'],
-  Callers:  ['phone', 'name', 'perDay', 'endDate', 'active', 'createdAt', 'startDate'],
+  Callers:  ['phone', 'name', 'perDay', 'endDate', 'active', 'createdAt', 'startDate', 'followedBy', 'followedAt'],
   Log:      ['ts', 'callerPhone', 'callerName', 'contactId', 'contactName', 'status', 'notes', 'milestone']
 };
 var MAX_ATTEMPTS = 3;        // "Didn't receive" contacts are retried up to 3 times
@@ -56,7 +56,8 @@ function createCore(store) {
     var from = start > today ? start : today;
     var left = c.endDate ? daysBetween(from, c.endDate) + 1 : 0;
     return { name: c.name, phone: normPhone(c.phone), perDay: Number(c.perDay) || 2, startDate: start, endDate: c.endDate,
-             daysLeft: Math.max(0, left), active: String(c.active) !== 'false', notStarted: !!start && today < start };
+             daysLeft: Math.max(0, left), active: String(c.active) !== 'false', notStarted: !!start && today < start,
+             followedBy: c.followedBy || '', followedAt: c.followedAt || '' };
   }
   function contactView(x) {
     return { id: x.id, name: x.name, phone: normPhone(x.phone), email: x.email, programs: x.programs,
@@ -368,7 +369,18 @@ function createCore(store) {
     return { reserved: n };
   }
 
-  return { state: state, login: state, submit: submit, feed: feed, adminData: adminData, saveCaller: saveCaller,
+  /* admin: note which admin last followed up with a caller, and on which day */
+  function markFollow(p) {
+    var c = findCaller(p.phone);
+    if (!c) throw new Error('Caller not found');
+    var by = String(p.by || '').trim();
+    if (!by) throw new Error('Enter who followed up');
+    c.followedBy = by; c.followedAt = /^\d{4}-\d{2}-\d{2}$/.test(p.date || '') ? p.date : istDay();
+    store.update('Callers', c);
+    return { ok: true, followedBy: c.followedBy, followedAt: c.followedAt };
+  }
+
+  return { markFollow: markFollow, state: state, login: state, submit: submit, feed: feed, adminData: adminData, saveCaller: saveCaller,
            uploadContacts: uploadContacts, assignContacts: assignContacts, assignBulk: assignBulk };
 }
 

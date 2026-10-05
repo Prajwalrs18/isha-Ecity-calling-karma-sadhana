@@ -95,14 +95,16 @@
       return '<div class="bar"><span>' + STATUS[k].emoji + ' ' + STATUS[k].label + '</span><div class="track"><div class="fill" style="width:' + (100 * (c[k] || 0) / max) + '%"></div></div><span class="n">' + (c[k] || 0) + '</span></div>';
     }).join('') + '<p class="muted tiny" style="margin:8px 0 0">' + c.unreachable + ' contacts did not pick up after 3 tries.</p>';
     var rows = d.callers.slice().sort(function (a, b) { return (b.active - a.active) || (a.todayDone / a.perDay) - (b.todayDone / b.perDay); });
-    $('#dashCallers').innerHTML = '<tr><th>Caller</th><th>Today</th><th class="num">Dials</th><th class="num">Total</th><th class="num">Intro</th><th class="num">Reg</th><th class="num">Days left</th></tr>' +
+    if (!$('#dashCallers').contains(document.activeElement)) $('#dashCallers').innerHTML = '<tr><th>Caller</th><th>Follow-up</th><th>Today</th><th class="num">Dials</th><th class="num">Total</th><th class="num">Intro</th><th class="num">Reg</th><th class="num">Days left</th></tr>' +
       (rows.length ? rows.map(function (v) {
         var pct = Math.min(100, 100 * v.todayDone / v.perDay);
         return '<tr class="' + (v.active ? '' : 'off') + '"><td><b>' + esc(v.name) + '</b><br><span class="muted">' + v.phone + '</span>' +
           '<div class="c-acts"><a class="call" href="tel:+91' + v.phone + '">📞 Call</a><a class="wa" target="_blank" rel="noopener" href="https://wa.me/91' + v.phone + '?text=' + encodeURIComponent(nudgeText(v)) + '">💬 WhatsApp</a></div></td>' +
+          '<td class="fu-cell" data-phone="' + v.phone + '"><div class="' + (v.followedBy ? 'fu-last' : 'fu-last none') + '">' + (v.followedBy ? '✅ ' + esc(v.followedBy) + ' · ' + shortDay(v.followedAt) : 'Not followed up yet') + '</div>' +
+          '<div class="fu-form"><input class="fu-by" placeholder="Your name" value="' + esc(LS.get('ics_admin_name') || '') + '"><input class="fu-date" type="date" value="' + istDay() + '"><button class="mini fu-save" title="Save follow-up">✓</button></div></td>' +
           '<td>' + v.todayDone + '/' + v.perDay + '<span class="bar-mini"><i style="width:' + pct + '%"></i></span></td><td class="num">' + v.todayDials + '</td><td class="num">' + v.dials + '</td>' +
           '<td class="num">' + v.intros + '</td><td class="num">' + v.regs + '</td><td class="num">' + v.daysLeft + '</td></tr>';
-      }).join('') : '<tr><td colspan="7" class="empty">No callers yet — add them in the Callers tab</td></tr>');
+      }).join('') : '<tr><td colspan="8" class="empty">No callers yet — add them in the Callers tab</td></tr>');
     $('#recent').innerHTML = d.log.slice(0, 40).map(function (l) {
       var s = STATUS[l.status] || { emoji: '', label: l.status };
       return '<li><span class="fi">' + s.emoji + '</span><div><b>' + esc(callerName(normPhone(l.callerPhone)) || l.callerName) + '</b> → ' + esc(l.contactName) + ': ' + esc(s.label) +
@@ -110,6 +112,17 @@
     }).join('') || '<li class="empty">No calls yet</li>';
   }
 
+  function shortDay(d) { return d ? Number(d.slice(8, 10)) + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(d.slice(5, 7)) - 1] : ''; }
+  $('#dashCallers').onclick = function (e) {   // admin logs a follow-up with a caller
+    var b = e.target.closest('.fu-save'); if (!b) return;
+    var td = b.closest('.fu-cell'), by = td.querySelector('.fu-by').value.trim(), date = td.querySelector('.fu-date').value;
+    if (!by) { toast('Please type your name'); return; }
+    LS.set('ics_admin_name', by); b.disabled = true;
+    call('markFollow', { phone: td.dataset.phone, by: by, date: date }).then(function (r) {
+      td.querySelector('.fu-last').className = 'fu-last'; td.querySelector('.fu-last').textContent = '✅ ' + r.followedBy + ' · ' + shortDay(r.followedAt);
+      b.blur(); toast('Follow-up saved 🙏'); return load();
+    }).catch(function (e) { toast('⚠️ ' + e.message); }).then(function () { b.disabled = false; });
+  };
   function nudgeText(v) {   // warm check-in message from the admin to a caller
     var n = firstName(v.name), left = v.perDay - v.todayDone;
     return left > 0
