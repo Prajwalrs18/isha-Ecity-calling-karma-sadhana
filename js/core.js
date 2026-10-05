@@ -59,6 +59,21 @@ function createCore(store) {
              daysLeft: Math.max(0, left), active: String(c.active) !== 'false', notStarted: !!start && today < start,
              followedBy: c.followedBy || '', followedAt: c.followedAt || '' };
   }
+  // calls owed from earlier days: from the caller's real first day (added mid-campaign = later start) until yesterday
+  function pendingOf(c, mine) {
+    var cv = callerView(c), today = istDay();
+    var created = c.createdAt ? istDay(c.createdAt) : '', first = cv.startDate > created ? cv.startDate : created;
+    var lastPast = c.endDate && c.endDate < today ? addDays(c.endDate, 1) : today;
+    var pastDays = first && first < lastPast ? daysBetween(first, lastPast) : 0;
+    var doneBefore = mine.filter(function (l) { return isCall(l) && istDay(l.ts) < today && l.status !== 'no_answer'; }).length;
+    return cv.active ? Math.max(0, pastDays * cv.perDay - doneBefore) : 0;
+  }
+  // contacts a caller should hold = calls/day x days left + calls still pending from earlier days
+  function targetOf(c, log) {
+    var cv = callerView(c), p = normPhone(c.phone);
+    if (!cv.active) return 0;
+    return cv.perDay * cv.daysLeft + pendingOf(c, log.filter(function (l) { return normPhone(l.callerPhone) === p; }));
+  }
   function contactView(x) {
     return { id: x.id, name: x.name, phone: normPhone(x.phone), email: x.email, programs: x.programs,
              attempts: Number(x.attempts) || 0, status: x.status, notes: x.notes, lastCalledAt: x.lastCalledAt };
@@ -120,12 +135,7 @@ function createCore(store) {
     var mine = log.filter(function (l) { return normPhone(l.callerPhone) === phone; });
     var todayMine = mine.filter(function (l) { return isCall(l) && istDay(l.ts) === today; });
     var done = todayMine.filter(function (l) { return l.status !== 'no_answer'; }).length;
-    // calls owed from earlier days: from the caller's real first day (added mid-campaign = later start) until yesterday
-    var created = c.createdAt ? istDay(c.createdAt) : '', first = cv.startDate > created ? cv.startDate : created;
-    var lastPast = c.endDate && c.endDate < today ? addDays(c.endDate, 1) : today;
-    var pastDays = first && first < lastPast ? daysBetween(first, lastPast) : 0;
-    var doneBefore = mine.filter(function (l) { return isCall(l) && istDay(l.ts) < today && l.status !== 'no_answer'; }).length;
-    var pending = cv.active ? Math.max(0, pastDays * cv.perDay - doneBefore) : 0;
+    var pending = pendingOf(c, mine);
     var contacts = store.all('Contacts');
     var inHand = contacts.filter(function (x) { return normPhone(x.assignedTo) === phone; });
     var over = !cv.active || cv.daysLeft <= 0, poolEmpty = false;
@@ -286,8 +296,7 @@ function createCore(store) {
     if (p.active !== undefined) row.active = String(p.active);
     if (existing) store.update('Callers', row); else store.insert('Callers', row);
     if (row.active === 'false') releaseInHand(phone);
-    var cv = callerView(row);
-    var reserved = p.skipAssign ? 0 : rebalance(phone, cv.active ? cv.perDay * cv.daysLeft : 0);
+    var reserved = p.skipAssign ? 0 : rebalance(phone, targetOf(row, store.all('Log')));
     return { ok: true, created: !existing, reserved: reserved };
   }
 
@@ -306,7 +315,6 @@ function createCore(store) {
     }
     return changed;
   }
-  function targetOf(c) { var cv = callerView(c); return cv.active ? cv.perDay * cv.daysLeft : 0; }
   function rebalance(phone, target) {
     var all = store.all('Contacts');
     if (rebalanceIn(all, phone, target)) store.replaceAll('Contacts', all);
@@ -314,11 +322,12 @@ function createCore(store) {
   }
   /* admin: bring every caller in line with calls/day x days left (one read, one write) */
   function syncAll() {
-    var all = store.all('Contacts'), changed = false, callers = store.all('Callers');
+    var all = store.all('Contacts'), changed = false, callers = store.all('Callers'), log = store.all('Log');
     var held = function (c) { return all.filter(function (x) { return normPhone(x.reservedFor) === normPhone(c.phone) && !x.status; }).length; };
     [true, false].forEach(function (releasing) {   // first give back extras, then top up from the freed pool
       callers.forEach(function (c) {
-        if ((held(c) > targetOf(c)) === releasing && rebalanceIn(all, normPhone(c.phone), targetOf(c))) changed = true;
+        var t = targetOf(c, log);
+        if ((held(c) > t) === releasing && rebalanceIn(all, normPhone(c.phone), t)) changed = true;
       });
     });
     if (changed) store.replaceAll('Contacts', all);
