@@ -19,13 +19,14 @@
   /* login */
   if (window.isDemo) $('#aDemo').classList.remove('hidden');
   $('#pwBtn').onclick = function () {
-    $('#pwErr').textContent = '';
+    var b = $('#pwBtn'); if (b.disabled) return;
+    $('#pwErr').textContent = ''; b.disabled = true; b.textContent = 'Logging in…';
     api('adminLogin', { password: $('#pw').value }).then(function (r) {
       A.token = r.token; LS.set('ics_admin_token', r.token); start(r.data);
-    }).catch(function (e) { $('#pwErr').textContent = e.message; });
+    }).catch(function (e) { $('#pwErr').textContent = e.message; }).then(function () { b.disabled = false; b.textContent = 'Log in'; });
   };
   $('#pw').onkeydown = function (e) { if (e.key === 'Enter') $('#pwBtn').click(); };
-  function logout() { LS.set('ics_admin_token', null); A.token = null; $('#aApp').classList.add('hidden'); $('#aLogin').classList.remove('hidden'); }
+  function logout() { LS.set('ics_admin_token', null); LS.set('ics_admin_cache', null); A.token = null; $('#aApp').classList.add('hidden'); $('#aLogin').classList.remove('hidden'); }
   $('#aOut').onclick = logout;
 
   function start(first) {
@@ -41,6 +42,7 @@
         return call('uploadContacts', { rows: window.MASTER_CONTACTS }).then(load);
       }
       A.d = d; renderAll();
+      if (!window.isDemo) LS.set('ics_admin_cache', JSON.stringify(d));
     }).catch(function (e) { toast('⚠️ ' + e.message); });
   }
   $('#refresh').onclick = function () { load().then(function () { toast('Refreshed'); }); };
@@ -319,5 +321,8 @@
     }).catch(function (e) { toast('⚠️ ' + e.message, 5000); }).then(function () { b.textContent = 'Upload'; b.disabled = !A.upRows; });
   };
 
-  if (A.token) start();
+  if (A.token) {
+    var cached = null; try { cached = JSON.parse(LS.get('ics_admin_cache') || 'null'); } catch (e) {}
+    if (cached && !window.isDemo) { start(cached); load(); } else start();
+  }
 })();

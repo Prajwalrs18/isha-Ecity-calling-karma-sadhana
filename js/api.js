@@ -57,7 +57,7 @@
 
   window.isDemo = !window.CONFIG.API_URL || window.isTest;
   // Live mode: wipe any test data left in this browser from demo mode
-  if (!window.isDemo) ['ics_Contacts', 'ics_Callers', 'ics_Log', 'ics_admtok', 'ics_admin_token', 'ics_seeded'].forEach(function (k) {
+  if (!window.isDemo) ['ics_Contacts', 'ics_Callers', 'ics_Log', 'ics_admtok', 'ics_seeded'].forEach(function (k) {
     try { localStorage.removeItem(k); } catch (e) {}
   });
   // Wake Google's script up as soon as the page opens, so it is ready by the time the number/password is typed
