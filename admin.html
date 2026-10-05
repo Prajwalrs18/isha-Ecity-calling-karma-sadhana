@@ -8,8 +8,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=19">
-<link rel="stylesheet" href="css/admin.css?v=19">
+<link rel="stylesheet" href="css/style.css?v=20">
+<link rel="stylesheet" href="css/admin.css?v=20">
 </head>
 <body class="adm">
 <div class="bg"><div class="bg-img show" style="background-image:url(img/admin.jpg)"></div><div class="bg-shade"></div></div>
@@ -65,7 +65,7 @@
       <button class="btn primary big" id="cSave">Add caller & assign contacts</button>
       <p class="muted tiny" style="margin-top:10px">Contacts are taken automatically from the remaining master sheet (calls per day × days). The caller logs in on the calling page with this phone number. Same number again = update.</p>
     </div>
-    <div class="card"><h3 class="h3">All callers</h3><div class="tbl-wrap"><table class="tbl" id="callersTbl"></table></div></div>
+    <div class="card"><h3 class="h3">All callers</h3><p class="muted tiny" style="margin:0 0 10px">Each caller holds calls/day × days left contacts. <button class="btn ghost" id="syncAll" style="padding:6px 12px;font-size:13px">🔄 Sync all callers</button></p><div class="tbl-wrap"><table class="tbl" id="callersTbl"></table></div></div>
   </section>
 
   <section class="a-view hidden" id="t-contacts">
@@ -126,9 +126,9 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="data/master-contacts.js"></script>
-<script src="js/config.js?v=19"></script>
-<script src="js/core.js?v=19"></script>
-<script src="js/api.js?v=19"></script>
-<script src="js/admin.js?v=19"></script>
+<script src="js/config.js?v=20"></script>
+<script src="js/core.js?v=20"></script>
+<script src="js/api.js?v=20"></script>
+<script src="js/admin.js?v=20"></script>
 </body>
 </html>
