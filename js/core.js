@@ -228,6 +228,7 @@ function createCore(store) {
       v.todayDone = mine.filter(function (l) { return isCall(l) && istDay(l.ts) === today && l.status !== 'no_answer'; }).length;
       v.todayDials = mine.filter(function (l) { return isCall(l) && istDay(l.ts) === today; }).length;
       v.dials = mine.filter(isCall).length;
+      v.reached = mine.filter(function (l) { return isCall(l) && l.status !== 'no_answer'; }).length;
       var called = contacts.filter(function (x) { return normPhone(x.calledBy) === p; });
       v.regs = called.filter(function (x) { return x.status === 'registered'; }).length;
       v.intros = called.filter(function (x) { return x.status === 'intro'; }).length;
@@ -408,7 +409,16 @@ function createCore(store) {
     return { ok: true, followedBy: c.followedBy, followedAt: c.followedAt };
   }
 
-  return { syncAll: syncAll, markFollow: markFollow, state: state, login: state, submit: submit, feed: feed, adminData: adminData, saveCaller: saveCaller,
+  function callerHistory(p) {
+    var phone = normPhone(p.phone), byId = {};
+    store.all('Contacts').forEach(function (x) { byId[String(x.id)] = x; });
+    return store.all('Log').filter(function (l) { return normPhone(l.callerPhone) === phone; }).reverse().map(function (l) {
+      var x = byId[String(l.contactId)] || {};
+      return { ts: l.ts, name: l.contactName, phone: normPhone(x.phone), status: l.status, notes: l.notes, update: l.milestone === 'update', now: x.status || '' };
+    });
+  }
+
+  return { callerHistory: callerHistory, syncAll: syncAll, markFollow: markFollow, state: state, login: state, submit: submit, feed: feed, adminData: adminData, saveCaller: saveCaller,
            uploadContacts: uploadContacts, assignContacts: assignContacts, assignBulk: assignBulk };
 }
 
