@@ -8,8 +8,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=23">
-<link rel="stylesheet" href="css/admin.css?v=23">
+<link rel="stylesheet" href="css/style.css?v=24">
+<link rel="stylesheet" href="css/admin.css?v=24">
 </head>
 <body class="adm">
 <div class="bg"><div class="bg-img show" style="background-image:url(img/admin.jpg)"></div><div class="bg-shade"></div></div>
@@ -122,13 +122,22 @@
     <div class="row2"><button class="btn ghost" id="eCancel">Cancel</button><button class="btn primary" id="eSave">Save</button></div>
   </div>
 </div>
+<div class="overlay sheet-wrap hidden" id="histWrap">
+  <div class="sheet">
+    <div class="sheet-grip"></div>
+    <h3 id="hTitle"></h3>
+    <p class="muted tiny" id="hSum"></p>
+    <ul class="feed hist-list" id="hList"></ul>
+    <button class="btn ghost" id="hClose">Close</button>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="data/master-contacts.js"></script>
-<script src="js/config.js?v=23"></script>
-<script src="js/core.js?v=23"></script>
-<script src="js/api.js?v=23"></script>
-<script src="js/admin.js?v=23"></script>
+<script src="js/config.js?v=24"></script>
+<script src="js/core.js?v=24"></script>
+<script src="js/api.js?v=24"></script>
+<script src="js/admin.js?v=24"></script>
 </body>
 </html>
