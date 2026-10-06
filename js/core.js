@@ -228,8 +228,9 @@ function createCore(store) {
       v.todayDone = mine.filter(function (l) { return isCall(l) && istDay(l.ts) === today && l.status !== 'no_answer'; }).length;
       v.todayDials = mine.filter(function (l) { return isCall(l) && istDay(l.ts) === today; }).length;
       v.dials = mine.filter(isCall).length;
-      v.regs = mine.filter(function (l) { return l.status === 'registered'; }).length;
-      v.intros = mine.filter(function (l) { return l.status === 'intro'; }).length;
+      var called = contacts.filter(function (x) { return normPhone(x.calledBy) === p; });
+      v.regs = called.filter(function (x) { return x.status === 'registered'; }).length;
+      v.intros = called.filter(function (x) { return x.status === 'intro'; }).length;
       v.inHand = contacts.filter(function (x) { return normPhone(x.assignedTo) === p; }).length;
       v.reserved = contacts.filter(function (x) { return normPhone(x.reservedFor) === p && !x.status; }).length;
       v.streak = streakOf(mine, v.perDay);
