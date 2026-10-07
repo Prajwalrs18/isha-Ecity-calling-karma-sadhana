@@ -8,8 +8,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=24">
-<link rel="stylesheet" href="css/admin.css?v=24">
+<link rel="stylesheet" href="css/style.css?v=25">
+<link rel="stylesheet" href="css/admin.css?v=25">
 </head>
 <body class="adm">
 <div class="bg"><div class="bg-img show" style="background-image:url(img/admin.jpg)"></div><div class="bg-shade"></div></div>
@@ -66,6 +66,12 @@
       <p class="muted tiny" style="margin-top:10px">Contacts are taken automatically from the remaining master sheet (calls per day × days). The caller logs in on the calling page with this phone number. Same number again = update.</p>
     </div>
     <div class="card"><h3 class="h3">All callers</h3><p class="muted tiny" style="margin:0 0 10px">Each caller holds calls/day × days left contacts. <button class="btn ghost" id="syncAll" style="padding:6px 12px;font-size:13px">🔄 Sync all callers</button></p><div class="tbl-wrap"><table class="tbl" id="callersTbl"></table></div></div>
+    <div class="card">
+      <h3 class="h3">💬 WhatsApp message for callers</h3>
+      <p class="muted tiny" style="margin:0">This is the message that opens when a caller taps WhatsApp. <b>{name}</b> = the person's first name, <b>{caller}</b> = the caller's name. *text* = bold.</p>
+      <textarea id="waText" rows="12"></textarea>
+      <div class="row2" style="margin-top:10px"><button class="btn ghost" id="waReset">Load default</button><button class="btn primary" id="waSave">Save message</button></div>
+    </div>
   </section>
 
   <section class="a-view hidden" id="t-contacts">
@@ -135,9 +141,9 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="data/master-contacts.js"></script>
-<script src="js/config.js?v=24"></script>
-<script src="js/core.js?v=24"></script>
-<script src="js/api.js?v=24"></script>
-<script src="js/admin.js?v=24"></script>
+<script src="js/config.js?v=25"></script>
+<script src="js/core.js?v=25"></script>
+<script src="js/api.js?v=25"></script>
+<script src="js/admin.js?v=25"></script>
 </body>
 </html>
