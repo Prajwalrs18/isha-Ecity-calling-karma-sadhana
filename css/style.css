@@ -232,3 +232,6 @@ textarea { width: 100%; min-height: 64px; border-radius: 12px; border: 1.5px sol
 .fu-update select { min-width: 0; border: 2px solid var(--line); border-radius: 12px; padding: 10px; font: 500 14px var(--sans); background: #fff; color: var(--ink); }
 .fu-update .btn { padding: 10px 16px; font-size: 15px; }
 .fu-update .btn:disabled { opacity: .45; }
+
+/* new location box (Location changed) */
+.loc-in { width: 100%; margin-top: 12px; padding: 12px; border-radius: 12px; border: 1.5px solid var(--saffron, #E08A1E); font: inherit; font-size: 15px; }
