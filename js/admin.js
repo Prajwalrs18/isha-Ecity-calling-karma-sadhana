@@ -78,7 +78,7 @@
   };
   $('#sumWa').onclick = function () { window.open('https://wa.me/?text=' + encodeURIComponent($('#sumText').value), '_blank'); };
 
-  function renderAll() { if (!A.sumDay) showSummary(addDays(istDay(), -1)); renderDash(); renderCallers(); renderContacts(); updatePreview(); fillCallerSelects(); }
+  function renderAll() { if (!A.sumDay) showSummary(addDays(istDay(), -1)); renderDash(); renderCallers(); renderWa(); renderContacts(); updatePreview(); fillCallerSelects(); }
   function callerName(p) { var c = A.d.callers.filter(function (x) { return x.phone === p; })[0]; return c ? c.name : p; }
 
   /* dashboard */
@@ -156,6 +156,20 @@
   }
 
   /* callers */
+  function renderWa() {   // the WhatsApp message callers send (saved in the Google Sheet)
+    if (A.waDirty) return;
+    $('#waText').value = A.d.waTemplate || window.CONFIG.WHATSAPP_TEMPLATE;
+  }
+  $('#waText').oninput = function () { A.waDirty = true; };
+  $('#waReset').onclick = function () { $('#waText').value = window.CONFIG.WHATSAPP_TEMPLATE; A.waDirty = true; toast('Default message loaded — tap Save to use it'); };
+  $('#waSave').onclick = function () {
+    var b = this, t = $('#waText').value;
+    if (t.indexOf('{name}') < 0 && !confirmNoName()) return;
+    b.disabled = true;
+    call('saveSettings', { waTemplate: t }).then(function () { A.waDirty = false; toast('Saved 🙏 Callers get it the next time they open the app'); return load(); })
+      .catch(function (e) { toast('⚠️ ' + e.message); }).then(function () { b.disabled = false; });
+  };
+  function confirmNoName() { if (A.noNameOk) return true; A.noNameOk = true; toast('Tip: add {name} so each person sees their own name. Tap Save again to save without it.', 5000); return false; }
   function renderCallers() {
     var rows = A.d.callers;
     $('#callersTbl').innerHTML = '<tr><th>Name</th><th>Phone</th><th class="num">Per day</th><th class="num">Days left</th><th>Ends</th><th class="num">Calling now</th><th class="num">Assigned (left to call)</th><th></th></tr>' +

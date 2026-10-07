@@ -13,12 +13,15 @@ var STATUS = {
   not_interested:   { label: 'Not interested',         emoji: '🙏' },
   no_answer:        { label: "Didn't receive",         emoji: '📵' },
   wrong_number:     { label: 'Wrong number',           emoji: '❌' },
-  completed_ie:     { label: 'Completed Inner Engineering', emoji: '🪷' }
+  completed_ie:     { label: 'Completed Inner Engineering', emoji: '🪷' },
+  shared_wa:        { label: 'Shared on WhatsApp',     emoji: '📲' },
+  location_changed: { label: 'Location changed',       emoji: '📍' }
 };
 var TABLES = {
   Contacts: ['id', 'name', 'phone', 'email', 'programs', 'reservedFor', 'assignedTo', 'assignedAt',
              'status', 'attempts', 'lastCalledAt', 'calledBy', 'notes'],
   Callers:  ['phone', 'name', 'perDay', 'endDate', 'active', 'createdAt', 'startDate', 'followedBy', 'followedAt'],
+  Settings: ['key', 'value'],
   Log:      ['ts', 'callerPhone', 'callerName', 'contactId', 'contactName', 'status', 'notes', 'milestone']
 };
 var MAX_ATTEMPTS = 3;        // "Didn't receive" contacts are retried up to 3 times
@@ -127,6 +130,17 @@ function createCore(store) {
     return s;
   }
 
+  function setting(k) {
+    var r = store.all('Settings').filter(function (x) { return x.key === k; })[0];
+    return r ? String(r.value) : '';
+  }
+  function saveSettings(p) {   // admin: e.g. the WhatsApp message callers send
+    if (typeof p.waTemplate !== 'string') throw new Error('Nothing to save');
+    var r = store.all('Settings').filter(function (x) { return x.key === 'waTemplate'; })[0];
+    if (r) { r.value = p.waTemplate; store.update('Settings', r); } else store.insert('Settings', { key: 'waTemplate', value: p.waTemplate });
+    return { ok: true };
+  }
+
   function state(p) {
     var c = findCaller(p.phone);
     if (!c) throw new Error('This number is not registered as a caller. Please contact the admin.');
@@ -167,7 +181,7 @@ function createCore(store) {
       stats: { total: mine.filter(isCall).length, regs: mine.filter(function (l) { return l.status === 'registered'; }).length,
                reached: Object.keys(mine.reduce(function (m, l) { if (l.status !== 'no_answer' && l.status !== 'wrong_number') m[l.contactId] = 1; return m; }, {})).length,
                streak: streakOf(mine, cv.perDay) },
-      history: history, feed: td.feed, board: td.board, team: td.team,
+      history: history, feed: td.feed, board: td.board, team: td.team, waTemplate: setting('waTemplate'),
       followUps: contacts.filter(function (x) { return x.status && normPhone(x.calledBy) === phone; }).map(contactView)
     };
   }
@@ -240,7 +254,7 @@ function createCore(store) {
     var dailyCapacity = cl.filter(function (v) { return v.active && v.daysLeft > 0; })
       .reduce(function (s, v) { return s + v.perDay; }, 0);
     return {
-      counts: counts, callers: cl, dailyCapacity: dailyCapacity, today: today,
+      counts: counts, callers: cl, dailyCapacity: dailyCapacity, today: today, waTemplate: setting('waTemplate'),
       contacts: contacts.map(function (x) {
         return { id: x.id, name: x.name, phone: normPhone(x.phone), email: x.email, programs: x.programs,
                  reservedFor: normPhone(x.reservedFor), assignedTo: normPhone(x.assignedTo), status: x.status,
@@ -418,7 +432,7 @@ function createCore(store) {
     });
   }
 
-  return { callerHistory: callerHistory, syncAll: syncAll, markFollow: markFollow, state: state, login: state, submit: submit, feed: feed, adminData: adminData, saveCaller: saveCaller,
+  return { saveSettings: saveSettings, callerHistory: callerHistory, syncAll: syncAll, markFollow: markFollow, state: state, login: state, submit: submit, feed: feed, adminData: adminData, saveCaller: saveCaller,
            uploadContacts: uploadContacts, assignContacts: assignContacts, assignBulk: assignBulk };
 }
 

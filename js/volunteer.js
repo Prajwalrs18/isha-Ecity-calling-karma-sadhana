@@ -26,10 +26,17 @@
     var t = $('#toast'); t.textContent = msg; t.classList.add('show');
     clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, ms || 2800);
   }
+  // "Location changed" needs the new place; it is kept at the start of the remarks
+  function withLoc(status, loc, note) {
+    if (status !== 'location_changed') return note;
+    loc = String(loc || '').trim();
+    if (!loc) { toast('📍 Please type the new location'); return null; }
+    return '📍 New location: ' + loc + (String(note || '').trim() ? ' · ' + note.trim() : '');
+  }
   function telLink(p) { return 'tel:' + (p.length === 10 ? '+91' + p : p); }
   function waLink(c) {
     var p = c.phone.length === 10 ? '91' + c.phone : c.phone;
-    var txt = C.WHATSAPP_TEMPLATE
+    var txt = (S.st && S.st.waTemplate || C.WHATSAPP_TEMPLATE)
       .replace(c.programs ? '{programs}' : ' ({programs})', c.programs || '')
       .replace(titleFirst(c.name) ? '{name}' : ' {name}', titleFirst(c.name)).replace('{caller}', titleFirst(S.st.caller.name));
     return 'https://wa.me/' + p + '?text=' + encodeURIComponent(txt);
@@ -157,6 +164,7 @@
         (c.notes ? '<p class="muted tiny" style="margin:10px 0 0">📝 ' + esc(c.notes) + '</p>' : '') +
         '<div class="how">After the call, tap what happened 👇</div>' +
         '<div class="status-grid" id="grid">' + statusButtons(S.sel) + '</div>' +
+        '<input id="newLoc" class="loc-in' + (S.sel === 'location_changed' ? '' : ' hidden') + '" placeholder="📍 Type the new location (e.g. Whitefield, Pune)" value="' + esc(S.loc || '') + '">' +
         '<details class="note-box"><summary>✏️ Add a note (optional)</summary><textarea id="note" placeholder="e.g. call after 6pm, asked about dates">' + esc(S.note || '') + '</textarea></details>' +
         '<div class="save-row"><button class="btn primary big" id="saveBtn" ' + (S.sel ? '' : 'disabled') + '>Save & next 🌸</button></div>' +
         '</div>';
@@ -164,10 +172,15 @@
         var b = e.target.closest('.sbtn'); if (!b) return;
         S.sel = b.dataset.s;
         [].forEach.call($('#grid').children, function (x) { x.classList.toggle('on', x === b); });
+        $('#newLoc').classList.toggle('hidden', S.sel !== 'location_changed'); if (S.sel === 'location_changed') $('#newLoc').focus();
         $('#saveBtn').disabled = false; FX.buzz(15);
       };
       $('#note').oninput = function () { S.note = this.value; };
-      $('#saveBtn').onclick = function () { save(c.id, S.sel, $('#note').value); };
+      $('#newLoc').oninput = function () { S.loc = this.value; };
+      $('#saveBtn').onclick = function () {
+        var n = withLoc(S.sel, $('#newLoc').value, $('#note').value); if (n === null) return;
+        S.loc = ''; save(c.id, S.sel, n);
+      };
       return;
     }
     if (st.caller.notStarted) {
@@ -272,7 +285,9 @@
     ['not_interested', '🙏 Not interested', '#9A4B5B', 'Nobody marked “Not interested” yet.'],
     ['wrong_number', '❌ Wrong no.', '#B8142C', 'Nobody marked “Wrong number” yet.'],
     ['registered', '🎉 Registered', '#1F8A4C', 'No registrations yet — your next call could be the one 🌸'],
-    ['completed_ie', '🪷 Completed IE', '#6A4C93', 'Nobody marked “Completed Inner Engineering” yet.']
+    ['completed_ie', '🪷 Completed IE', '#6A4C93', 'Nobody marked “Completed Inner Engineering” yet.'],
+    ['shared_wa', '📲 Shared WA', '#128C7E', 'Nobody marked “Shared on WhatsApp” yet.'],
+    ['location_changed', '📍 Moved', '#5B6B7A', 'Nobody marked “Location changed” yet.']
   ];
   function fuItem(x, g) {
     var meta = [x.lastCalledAt ? 'last call ' + ago(x.lastCalledAt) : '', x.status === 'no_answer' && x.attempts ? 'tried ' + x.attempts + 'x' : '', x.programs ? esc(x.programs) : '']
@@ -306,11 +321,15 @@
     S.fuTab = b.dataset.tab; S.fuTabPicked = true; renderFollow();
   };
   $('#fuList').onchange = function (e) {
-    var li = e.target.closest('li[data-id]'); if (li && e.target.tagName === 'SELECT') li.querySelector('[data-save]').disabled = !e.target.value;
+    var li = e.target.closest('li[data-id]'); if (!li || e.target.tagName !== 'SELECT') return;
+    li.querySelector('[data-save]').disabled = !e.target.value;
+    li.querySelector('.fu-note').placeholder = e.target.value === 'location_changed' ? '📍 New location (required)' : 'Remarks (optional)';
   };
   $('#fuList').onclick = function (e) {
     var li = e.target.closest('li[data-id]'); if (!li || !e.target.closest('[data-save]')) return;
-    var v = li.querySelector('select').value; if (v) save(li.dataset.id, v, li.querySelector('.fu-note').value, true);
+    var v = li.querySelector('select').value, note = li.querySelector('.fu-note').value; if (!v) return;
+    if (v === 'location_changed') { note = withLoc(v, note, ''); if (note === null) return; }
+    save(li.dataset.id, v, note, true);
   };
   document.querySelector('.tabs').onclick = function (e) {
     var b = e.target.closest('button'); if (!b) return;
