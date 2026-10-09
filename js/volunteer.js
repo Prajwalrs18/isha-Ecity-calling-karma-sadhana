@@ -33,6 +33,7 @@
     if (!loc) { toast('📍 Please type the new location'); return null; }
     return '📍 New location: ' + loc + (String(note || '').trim() ? ' · ' + note.trim() : '');
   }
+  var WA_NOTE = '🙏 Please share on WhatsApp only after the call is complete, or if they didn’t pick up. Gentle note: if they didn’t receive the call, a WhatsApp alone is not counted as a call 🌸';
   function telLink(p) { return 'tel:' + (p.length === 10 ? '+91' + p : p); }
   function waLink(c) {
     var p = c.phone.length === 10 ? '91' + c.phone : c.phone;
@@ -173,6 +174,7 @@
         S.sel = b.dataset.s;
         [].forEach.call($('#grid').children, function (x) { x.classList.toggle('on', x === b); });
         $('#newLoc').classList.toggle('hidden', S.sel !== 'location_changed'); if (S.sel === 'location_changed') $('#newLoc').focus();
+        if (S.sel === 'shared_wa') toast(WA_NOTE, 7000);
         $('#saveBtn').disabled = false; FX.buzz(15);
       };
       $('#note').oninput = function () { S.note = this.value; };
@@ -258,6 +260,7 @@
     if (milestone === 'extra') { FX.shower(30); FX.chime(); return toast('✨ Extra mile! Everyone can see it'); }
     if (status === 'follow_up') { FX.shower(15); return toast('📌 Added to your Follow-ups tab'); }
     if (status === 'no_answer') return toast("📵 No worries — here's your next call");
+    if (status === 'shared_wa') return toast('📲 Noted. A call is still the heart of it — try them again when you can 🙏', 4000);
     toast('🙏 Thank you. Every call counts');
   }
 
@@ -324,6 +327,7 @@
     var li = e.target.closest('li[data-id]'); if (!li || e.target.tagName !== 'SELECT') return;
     li.querySelector('[data-save]').disabled = !e.target.value;
     li.querySelector('.fu-note').placeholder = e.target.value === 'location_changed' ? '📍 New location (required)' : 'Remarks (optional)';
+    if (e.target.value === 'shared_wa') toast(WA_NOTE, 7000);
   };
   $('#fuList').onclick = function (e) {
     var li = e.target.closest('li[data-id]'); if (!li || !e.target.closest('[data-save]')) return;

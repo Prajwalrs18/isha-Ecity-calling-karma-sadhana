@@ -275,7 +275,7 @@
   }
   $('#bulkAssign').onclick = function () { bulk(false); };
   $('#bulkReset').onclick = function () { bulk(true); };
-  function notReached(x) { return !x.status || x.status === 'no_answer' || x.status === 'wrong_number'; }
+  function notReached(x) { return !x.status || !counted(x.status) || x.status === 'wrong_number'; }
   function downloadCsv(list, file) {
     var cols = ['name', 'phone', 'email', 'programs', 'status', 'attempts', 'lastCalledAt', 'calledBy', 'notes'];
     var head = ['Name', 'Phone', 'Email', 'Programs', 'Status', 'Tries', 'Last called', 'Called by', 'Notes'];
