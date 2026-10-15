@@ -78,7 +78,7 @@
   };
   $('#sumWa').onclick = function () { window.open('https://wa.me/?text=' + encodeURIComponent($('#sumText').value), '_blank'); };
 
-  function renderAll() { if (!A.sumDay) showSummary(addDays(istDay(), -1)); renderDash(); renderCallers(); renderWa(); renderContacts(); updatePreview(); fillCallerSelects(); }
+  function renderAll() { if (!A.sumDay) showSummary(addDays(istDay(), -1)); renderDash(); renderCallers(); renderWa(); renderNudge(); renderContacts(); updatePreview(); fillCallerSelects(); }
   function callerName(p) { var c = A.d.callers.filter(function (x) { return x.phone === p; })[0]; return c ? c.name : p; }
 
   /* dashboard */
@@ -96,7 +96,7 @@
     $('#bars').innerHTML = Object.keys(STATUS).map(function (k) {
       return '<div class="bar"><span>' + STATUS[k].emoji + ' ' + STATUS[k].label + '</span><div class="track"><div class="fill" style="width:' + (100 * (c[k] || 0) / max) + '%"></div></div><span class="n">' + (c[k] || 0) + '</span></div>';
     }).join('') + '<p class="muted tiny" style="margin:8px 0 0">' + c.unreachable + ' contacts did not pick up after 3 tries.</p>';
-    var rows = d.callers.slice().sort(function (a, b) { return (b.active - a.active) || (a.todayDone / a.perDay) - (b.todayDone / b.perDay); });
+    var rows = d.callers.slice().sort(function (a, b) { return (b.active - a.active) || (a.todayDone / a.perDay) - (b.todayDone / b.perDay) || (b.perDay - b.todayDone) - (a.perDay - a.todayDone) || String(a.name).localeCompare(b.name); });
     if (!$('#dashCallers').contains(document.activeElement)) $('#dashCallers').innerHTML = '<tr><th>Caller</th><th>Follow-up</th><th>Today</th><th class="num">Dials</th><th class="num">Total</th><th class="num">Intro</th><th class="num">Reg</th><th class="num">Days left</th></tr>' +
       (rows.length ? rows.map(function (v) {
         var pct = Math.min(100, 100 * v.todayDone / v.perDay);
@@ -148,11 +148,10 @@
     call('syncAll').then(function (r) { toast('Synced 🙏 ' + r.unassigned + ' contacts unassigned'); return load(); })
       .catch(function (e) { toast('⚠️ ' + e.message); }).then(function () { b.disabled = false; });
   };
-  function nudgeText(v) {   // warm check-in message from the admin to a caller
-    var n = firstName(v.name), left = v.perDay - v.todayDone;
-    return left > 0
-      ? 'Namaskaram ' + n + ' 🙏\n\nHope you are doing well. A gentle reminder for today’s Karma Sadhana calls: ' + v.todayDone + ' of ' + v.perDay + ' done, ' + left + ' more to go 🌸\n\nThank you for offering your time to make this happen.'
-      : 'Namaskaram ' + n + ' 🙏\n\nYou have completed today’s Karma Sadhana calls 🌸 Thank you so much for your offering!';
+  function nudgeText(v) {   // warm check-in message from the admin to a caller (editable in the Callers tab)
+    var s = (A.d && A.d.settings) || {}, C = window.CONFIG, left = v.perDay - v.todayDone;
+    var t = left > 0 ? (s.nudgePending || C.NUDGE_PENDING) : (s.nudgeDone || C.NUDGE_DONE);
+    return t.split('{name}').join(firstName(v.name)).split('{done}').join(v.todayDone).split('{target}').join(v.perDay).split('{left}').join(Math.max(0, left));
   }
 
   /* callers */
@@ -167,6 +166,20 @@
     if (t.indexOf('{name}') < 0 && !confirmNoName()) return;
     b.disabled = true;
     call('saveSettings', { waTemplate: t }).then(function () { A.waDirty = false; toast('Saved 🙏 Callers get it the next time they open the app'); return load(); })
+      .catch(function (e) { toast('⚠️ ' + e.message); }).then(function () { b.disabled = false; });
+  };
+  function renderNudge() {   // the admin's reminder / thank-you messages to callers
+    if (A.nuDirty) return;
+    var s = A.d.settings || {};
+    $('#nuPending').value = s.nudgePending || window.CONFIG.NUDGE_PENDING;
+    $('#nuDone').value = s.nudgeDone || window.CONFIG.NUDGE_DONE;
+  }
+  $('#nuPending').oninput = $('#nuDone').oninput = function () { A.nuDirty = true; };
+  $('#nuReset').onclick = function () { $('#nuPending').value = window.CONFIG.NUDGE_PENDING; $('#nuDone').value = window.CONFIG.NUDGE_DONE; A.nuDirty = true; toast('Default messages loaded — tap Save to use them'); };
+  $('#nuSave').onclick = function () {
+    var b = this; b.disabled = true;
+    call('saveSettings', { settings: { nudgePending: $('#nuPending').value, nudgeDone: $('#nuDone').value } })
+      .then(function () { A.nuDirty = false; toast('Saved 🙏 The Call / WhatsApp buttons on the dashboard now use these'); return load(); })
       .catch(function (e) { toast('⚠️ ' + e.message); }).then(function () { b.disabled = false; });
   };
   function confirmNoName() { if (A.noNameOk) return true; A.noNameOk = true; toast('Tip: add {name} so each person sees their own name. Tap Save again to save without it.', 5000); return false; }

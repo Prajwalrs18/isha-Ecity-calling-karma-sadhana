@@ -136,10 +136,19 @@ function createCore(store) {
     var r = store.all('Settings').filter(function (x) { return x.key === k; })[0];
     return r ? String(r.value) : '';
   }
-  function saveSettings(p) {   // admin: e.g. the WhatsApp message callers send
-    if (typeof p.waTemplate !== 'string') throw new Error('Nothing to save');
-    var r = store.all('Settings').filter(function (x) { return x.key === 'waTemplate'; })[0];
-    if (r) { r.value = p.waTemplate; store.update('Settings', r); } else store.insert('Settings', { key: 'waTemplate', value: p.waTemplate });
+  var SETTING_KEYS = ['waTemplate', 'nudgePending', 'nudgeDone'];   // admin-editable messages
+  function allSettings() {
+    var o = {}; store.all('Settings').forEach(function (x) { if (SETTING_KEYS.indexOf(x.key) >= 0) o[x.key] = String(x.value); }); return o;
+  }
+  function saveSettings(p) {   // admin: the preloaded WhatsApp messages
+    var vals = p.settings || { waTemplate: p.waTemplate }, n = 0;
+    SETTING_KEYS.forEach(function (k) {
+      if (typeof vals[k] !== 'string') return;
+      var r = store.all('Settings').filter(function (x) { return x.key === k; })[0];
+      if (r) { r.value = vals[k]; store.update('Settings', r); } else store.insert('Settings', { key: k, value: vals[k] });
+      n++;
+    });
+    if (!n) throw new Error('Nothing to save');
     return { ok: true };
   }
 
@@ -256,7 +265,7 @@ function createCore(store) {
     var dailyCapacity = cl.filter(function (v) { return v.active && v.daysLeft > 0; })
       .reduce(function (s, v) { return s + v.perDay; }, 0);
     return {
-      counts: counts, callers: cl, dailyCapacity: dailyCapacity, today: today, waTemplate: setting('waTemplate'),
+      counts: counts, callers: cl, dailyCapacity: dailyCapacity, today: today, waTemplate: setting('waTemplate'), settings: allSettings(),
       contacts: contacts.map(function (x) {
         return { id: x.id, name: x.name, phone: normPhone(x.phone), email: x.email, programs: x.programs,
                  reservedFor: normPhone(x.reservedFor), assignedTo: normPhone(x.assignedTo), status: x.status,
